@@ -1,9 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Router, Network, Activity, Users } from "lucide-react";
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 const Dashboard = () => {
   return (
     <div className="p-6">
+      <PWAInstallPrompt />
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Terminal, Network, Lock, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import DesktopCompiler from '@/components/DesktopCompiler';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
 let tauriInvoke: any = null;
@@ -390,55 +391,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
           </AlertDescription>
         </Alert>
 
-        {!isDesktopApp && (
-          <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                <Terminal className="h-5 w-5" />
-                Instructions - Application Desktop
-              </CardTitle>
-              <CardDescription className="text-amber-700 dark:text-amber-300">
-                Pour utiliser de vraies connexions SSH, compilez l'application desktop
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div>
-                  <h4 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">1. Compilation</h4>
-                  <div className="bg-amber-100 dark:bg-amber-900 p-3 rounded-md">
-                    <code className="text-sm text-amber-900 dark:text-amber-100">npm run tauri:build</code>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">2. Localisation de l'exécutable</h4>
-                  <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
-                    <li><strong>Windows:</strong> <code>src-tauri/target/release/dot1x-automator.exe</code></li>
-                    <li><strong>Linux:</strong> <code>src-tauri/target/release/dot1x-automator</code></li>
-                    <li><strong>macOS:</strong> <code>src-tauri/target/release/bundle/macos/</code></li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">3. Mode développement (optionnel)</h4>
-                  <div className="bg-amber-100 dark:bg-amber-900 p-3 rounded-md">
-                    <code className="text-sm text-amber-900 dark:text-amber-100">npm run tauri:dev</code>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">4. Avantages de l'app desktop</h4>
-                  <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
-                    <li>• <strong>SSH natif</strong> - Vraies connexions sans limitations navigateur</li>
-                    <li>• <strong>Sécurité renforcée</strong> - Aucun transit par serveurs tiers</li>
-                    <li>• <strong>Ping réel</strong> - Test de connectivité authentique</li>
-                    <li>• <strong>Configuration réelle</strong> - Récupération directe depuis les switches</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <DesktopCompiler isDesktopApp={isDesktopApp} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Formulaire de connexion */}

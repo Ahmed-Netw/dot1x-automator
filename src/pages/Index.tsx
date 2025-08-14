@@ -21,7 +21,7 @@ const Index = () => {
   const interfaces = parser?.getInterfaces() || [];
   const dot1xConfig = parser?.generateDot1xConfig(interfaces) || '';
   const cleanupConfig = parser?.generateCleanupConfig(interfaces) || '';
-  const radiusConfig = parser?.getRadiusConfig() || '';
+  const radiusConfig = parser?.getRadiusConfig(switchInfo?.managementIp) || '';
 
   return (
     <div className="min-h-screen bg-background">

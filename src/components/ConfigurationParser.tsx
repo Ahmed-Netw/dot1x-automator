@@ -28,12 +28,28 @@ export class ConfigurationParser {
         info.hostname = trimmed.split(' ')[3];
       }
       
-      // Extract management IP (looking for management interface)
+      // Extract management IP - improved detection
       if (trimmed.includes('set interfaces') && trimmed.includes('unit 0 family inet address')) {
         const parts = trimmed.split(' ');
         const ipIndex = parts.findIndex(part => part === 'address') + 1;
         if (ipIndex > 0 && parts[ipIndex]) {
-          info.managementIp = parts[ipIndex].split('/')[0];
+          const ip = parts[ipIndex].split('/')[0];
+          // Prefer management/admin VLAN IPs
+          if (ip.startsWith('10.148.') || ip.includes('192.168.') || !info.managementIp) {
+            info.managementIp = ip;
+          }
+        }
+      }
+      
+      // Also look for VLAN interfaces that might be management
+      if (trimmed.includes('set interfaces vlan') && trimmed.includes('family inet address')) {
+        const parts = trimmed.split(' ');
+        const ipIndex = parts.findIndex(part => part === 'address') + 1;
+        if (ipIndex > 0 && parts[ipIndex]) {
+          const ip = parts[ipIndex].split('/')[0];
+          if (ip.startsWith('10.148.') || ip.includes('192.168.')) {
+            info.managementIp = ip;
+          }
         }
       }
     }
@@ -44,18 +60,15 @@ export class ConfigurationParser {
   getInterfaces(): Interface[] {
     const lines = this.config.split('\n');
     const interfaces: Map<string, Interface> = new Map();
-
-    let currentInterface = '';
     
     for (const line of lines) {
       const trimmed = line.trim();
       
       // Detect interface configuration lines
-      if (trimmed.startsWith('set interfaces')) {
+      if (trimmed.startsWith('set interfaces') && trimmed.includes('ge-')) {
         const parts = trimmed.split(' ');
         if (parts.length >= 3) {
           const interfaceName = parts[2];
-          currentInterface = interfaceName;
           
           if (!interfaces.has(interfaceName)) {
             interfaces.set(interfaceName, {
@@ -68,9 +81,9 @@ export class ConfigurationParser {
           const iface = interfaces.get(interfaceName)!;
           iface.config.push(trimmed);
           
-          // Check if it's an access port
-          if (trimmed.includes('ethernet-switching-options') && 
-              (trimmed.includes('port-mode access') || trimmed.includes('access'))) {
+          // Check if it's an access port - improved detection
+          if (trimmed.includes('family ethernet-switching port-mode access') || 
+              (trimmed.includes('ethernet-switching-options') && trimmed.includes('port-mode access'))) {
             iface.isAccess = true;
           }
         }
@@ -105,6 +118,8 @@ export class ConfigurationParser {
     
     for (const iface of interfaces) {
       if (iface.isAccess) {
+        // Clean up both possible configurations
+        configs.push(`delete interfaces ${iface.name} unit 0 family ethernet-switching`);
         configs.push(`delete interfaces ${iface.name} ethernet-switching-options`);
       }
     }
@@ -112,13 +127,14 @@ export class ConfigurationParser {
     return configs.join('\n');
   }
 
-  getRadiusConfig(): string {
+  getRadiusConfig(managementIp?: string): string {
+    const sourceAddress = managementIp || '10.148.62.241';
     return `set access radius-server 10.147.32.47 port 1812
 set access radius-server 10.147.32.47 secret "$9$qfTF69tBRcP5Qn9tREdbwsoJUjH.fT"
-set access radius-server 10.147.32.47 source-address 10.148.62.185
+set access radius-server 10.147.32.47 source-address ${sourceAddress}
 set access radius-server 10.147.160.47 port 1812
 set access radius-server 10.147.160.47 secret "$9$72Vw2oJUkm5dbs4JUmPBIREreM8XNVw"
-set access radius-server 10.147.160.47 source-address 10.148.62.185
+set access radius-server 10.147.160.47 source-address ${sourceAddress}
 set access profile 802.1x-auth accounting-order radius
 set access profile 802.1x-auth authentication-order radius
 set access profile 802.1x-auth radius authentication-server 10.147.32.47

@@ -33,6 +33,30 @@ export const ConfigurationOutput = ({ dot1xConfig, cleanupConfig, radiusConfig }
     URL.revokeObjectURL(url);
   };
 
+  const downloadAllConfigs = () => {
+    const allConfig = `# Configuration complète pour 802.1X
+# ========================================
+
+# 1. Configuration RADIUS
+${radiusConfig}
+
+# 2. Configuration 802.1X pour les interfaces
+${dot1xConfig}
+
+# 3. Nettoyage des interfaces (à exécuter en premier)
+${cleanupConfig}
+
+# ========================================
+# Instructions d'application:
+# 1. Appliquer d'abord les commandes de nettoyage
+# 2. Appliquer la configuration RADIUS
+# 3. Appliquer la configuration 802.1X
+# 4. Faire un commit de la configuration
+`;
+    
+    downloadConfig(allConfig, 'juniper-complete-config.txt');
+  };
+
   const ConfigurationCard = ({ 
     title, 
     description, 
@@ -96,6 +120,16 @@ export const ConfigurationOutput = ({ dot1xConfig, cleanupConfig, radiusConfig }
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="flex justify-end mb-4">
+          <Button
+            onClick={downloadAllConfigs}
+            className="bg-tech-primary hover:bg-tech-primary/90"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Télécharger Configuration Complète
+          </Button>
+        </div>
+        
         <Tabs defaultValue="dot1x" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="dot1x">802.1X</TabsTrigger>

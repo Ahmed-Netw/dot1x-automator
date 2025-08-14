@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 Network Management Suite v2.0
-Interface graphique pour la gestion des équipements réseau avec:
-- Connexion au serveur Robont et récupération de configuration switch
+Interface graphique pour la gestion des equipements reseau avec:
+- Connexion au serveur Robont et recuperation de configuration switch
 - Configuration automatique pour Cisco ISE (Juniper Configuration Tool)
 """
 
@@ -28,7 +28,7 @@ except ImportError:
         import paramiko
         print("Paramiko installé avec succès!")
     except Exception as e:
-        messagebox.showerror("Erreur de dépendance", 
+        messagebox.showerror("Erreur de dependance", 
             f"Impossible d'installer paramiko: {e}\n\n"
             "Veuillez installer manuellement:\n"
             "pip install paramiko")
@@ -114,7 +114,7 @@ class ConfigurationParser:
                 if iface['name'].startswith('ge-') and iface['is_access']]
     
     def generate_dot1x_config(self, interfaces):
-        """Génère la configuration 802.1x"""
+        """Genere la configuration 802.1x"""
         configs = []
         
         for iface in interfaces:
@@ -132,7 +132,7 @@ class ConfigurationParser:
         return '\n'.join(configs)
     
     def generate_cleanup_config(self, interfaces):
-        """Génère la configuration de nettoyage"""
+        """Genere la configuration de nettoyage"""
         configs = []
         
         for iface in interfaces:
@@ -145,7 +145,7 @@ class ConfigurationParser:
         return '\n'.join(configs)
     
     def get_radius_config(self, management_ip=None):
-        """Génère la configuration RADIUS"""
+        """Genere la configuration RADIUS"""
         source_address = management_ip or '10.148.62.241'
         return f"""set access radius-server 10.147.32.47 port 1812
 set access radius-server 10.147.32.47 secret "$9$qfTF69tBRcP5Qn9tREdbwsoJUjH.fT"

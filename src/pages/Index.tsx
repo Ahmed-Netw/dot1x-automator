@@ -1,11 +1,71 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { FileUpload } from '@/components/FileUpload';
+import { SwitchInfo } from '@/components/SwitchInfo';
+import { InterfaceList } from '@/components/InterfaceList';
+import { ConfigurationOutput } from '@/components/ConfigurationOutput';
+import { ConfigurationParser } from '@/components/ConfigurationParser';
+import { Router } from 'lucide-react';
 
 const Index = () => {
+  const [configContent, setConfigContent] = useState<string>('');
+  const [filename, setFilename] = useState<string>('');
+  const [parser, setParser] = useState<ConfigurationParser | null>(null);
+
+  const handleFileRead = (content: string, name: string) => {
+    setConfigContent(content);
+    setFilename(name);
+    setParser(new ConfigurationParser(content));
+  };
+
+  const switchInfo = parser?.getSwitchInfo();
+  const interfaces = parser?.getInterfaces() || [];
+  const dot1xConfig = parser?.generateDot1xConfig(interfaces) || '';
+  const cleanupConfig = parser?.generateCleanupConfig(interfaces) || '';
+  const radiusConfig = parser?.getRadiusConfig() || '';
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Router className="h-8 w-8 text-tech-primary" />
+            <h1 className="text-3xl font-bold">Juniper Configuration Tool</h1>
+          </div>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Outil de configuration automatique pour switches Juniper - 
+            Ajout de 802.1X et configuration RADIUS
+          </p>
+        </div>
+
+        <div className="space-y-8">
+          {/* File Upload */}
+          <FileUpload onFileRead={handleFileRead} />
+
+          {/* Show results only if file is uploaded */}
+          {parser && (
+            <>
+              {/* Switch Information */}
+              <SwitchInfo 
+                hostname={switchInfo?.hostname}
+                managementIp={switchInfo?.managementIp}
+                interfaceCount={interfaces.length}
+              />
+
+              {/* Interface List */}
+              <InterfaceList interfaces={interfaces} />
+
+              {/* Configuration Output */}
+              {interfaces.length > 0 && (
+                <ConfigurationOutput
+                  dot1xConfig={dot1xConfig}
+                  cleanupConfig={cleanupConfig}
+                  radiusConfig={radiusConfig}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

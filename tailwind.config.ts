@@ -52,6 +52,20 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				tech: {
+					primary: 'hsl(var(--tech-primary))',
+					secondary: 'hsl(var(--tech-secondary))',
+					success: 'hsl(var(--tech-success))',
+					warning: 'hsl(var(--tech-warning))',
+					danger: 'hsl(var(--tech-danger))'
+				},
+				code: {
+					bg: 'hsl(var(--code-bg))',
+					text: 'hsl(var(--code-text))',
+					keyword: 'hsl(var(--code-keyword))',
+					string: 'hsl(var(--code-string))',
+					number: 'hsl(var(--code-number))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

@@ -165,6 +165,81 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 # Timestamp de fin: ${new Date().toLocaleString('fr-FR')}`;
   };
 
+  const handlePing = async (target: 'robont' | 'switch') => {
+    const ip = target === 'robont' ? robontServerIp : switchIp;
+    
+    if (!ip) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez saisir une adresse IP",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (tauriInvoke) {
+        const isReachable = await tauriInvoke('ping_host', { ip }) as boolean;
+        toast({
+          title: `Ping ${target}`,
+          description: isReachable ? 
+            `✓ ${ip} est accessible (port 22 ouvert)` : 
+            `✗ ${ip} n'est pas accessible`,
+          variant: isReachable ? "default" : "destructive"
+        });
+      } else {
+        // Mode web - simulation basique
+        toast({
+          title: "Mode simulation",
+          description: `Ping vers ${ip} - utilisez l'app desktop pour un vrai test`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur de ping",
+        description: error.message || 'Erreur lors du test de connectivité',
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleTestRobont = async () => {
+    if (!robontUsername || !robontPassword) {
+      toast({
+        title: "Champs manquants",
+        description: "Veuillez saisir les identifiants du serveur Robont",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (tauriInvoke) {
+        const result = await tauriInvoke('test_robont_connection', {
+          ip: robontServerIp,
+          username: robontUsername,
+          password: robontPassword
+        }) as string;
+        
+        toast({
+          title: "Test de connexion",
+          description: result,
+        });
+      } else {
+        toast({
+          title: "Mode simulation",
+          description: "Test de connexion Robont - utilisez l'app desktop pour un vrai test",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Test échoué",
+        description: error.message || 'Erreur lors du test de connexion',
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleConnect = async () => {
     // Validation IP basique
     const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -415,14 +490,44 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
                 </div>
               </div>
 
+              {/* Boutons de test */}
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handlePing('robont')}
+                    className="flex-1"
+                  >
+                    Ping Robont
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleTestRobont}
+                    className="flex-1"
+                  >
+                    Test Connexion
+                  </Button>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handlePing('switch')}
+                  className="w-full"
+                  disabled={!switchIp}
+                >
+                  Ping Switch ({switchIp || 'IP non saisie'})
+                </Button>
+              </div>
+
+              
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
                   Connexion SSH sécurisée via serveur Robont → show configuration | display set | no-more
                 </span>
               </div>
-
-              {/* Statut de connexion */}
               {isConnecting && connectionStep && (
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">{connectionStep}</p>

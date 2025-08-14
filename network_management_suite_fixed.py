@@ -213,7 +213,7 @@ class NetworkManagementSuite:
         menu_items = [
             ("Dashboard", "dashboard", "🏠"),
             ("Robont Switch Manager", "robont", "🔗"),
-            ("ISE Switch Config", "ise", "⚙️")
+            ("Juniper Configuration Tool", "ise", "⚙️")
         ]
         
         for i, (text, key, icon) in enumerate(menu_items):
@@ -316,9 +316,9 @@ class NetworkManagementSuite:
         card2.pack(side='left', fill='both', expand=True, padx=(15, 0))
         
         tk.Label(card2, text="⚙️", font=('Arial', 40), bg='white').pack(pady=(20, 10))
-        tk.Label(card2, text="ISE Switch Config", 
+        tk.Label(card2, text="Juniper Configuration Tool", 
                 font=('Arial', 14, 'bold'), bg='white').pack()
-        tk.Label(card2, text="Configuration des switchs\npour Cisco ISE", 
+        tk.Label(card2, text="Analyse et configuration\nautomatique Juniper", 
                 font=('Arial', 10), bg='white', fg='#7f8c8d').pack(pady=(5, 20))
         
         btn2 = tk.Button(card2, text="Accéder", font=('Arial', 10, 'bold'), 
@@ -351,9 +351,9 @@ class NetworkManagementSuite:
    ├── Commande: show configuration | display set | no-more
    └── Export et sauvegarde des configurations
 
-⚙️ ISE SWITCH CONFIG (NOUVEAU!)
+⚙️ JUNIPER CONFIGURATION TOOL
    ├── Upload de fichiers de configuration Juniper
-   ├── Analyse automatique des interfaces access
+   ├── Analyse automatique des interfaces access  
    ├── Génération de configuration 802.1X
    ├── Configuration RADIUS pour ISE
    ├── Nettoyage des configurations existantes
@@ -512,13 +512,13 @@ class NetworkManagementSuite:
         self.hostname_label.pack(side='right', padx=5)
     
     def show_ise_config(self):
-        """Affiche l'interface ISE Switch Config complète"""
+        """Affiche l'interface Juniper Configuration Tool complète"""
         # Titre
         title_frame = tk.Frame(self.main_area, bg='#e67e22', height=60)
         title_frame.pack(fill='x', padx=0, pady=0)
         title_frame.pack_propagate(False)
         
-        title_label = tk.Label(title_frame, text="⚙️ ISE Switch Config", 
+        title_label = tk.Label(title_frame, text="⚙️ Juniper Configuration Tool", 
                               font=('Arial', 16, 'bold'), fg='white', bg='#e67e22')
         title_label.pack(pady=15)
         

@@ -175,7 +175,7 @@ class NetworkManagementSuite:
         self.is_connecting = False
         self.config_data = ""
         
-        # Variables ISE Config
+        # Variables Juniper Config
         self.uploaded_config = ""
         self.parsed_config = None
         self.switch_info = {}
@@ -213,7 +213,7 @@ class NetworkManagementSuite:
         menu_items = [
             ("Dashboard", "dashboard", "🏠"),
             ("Robont Switch Manager", "robont", "🔗"),
-            ("Juniper Configuration Tool", "ise", "⚙️")
+            ("Juniper Configuration Tool", "juniper", "⚙️")
         ]
         
         for i, (text, key, icon) in enumerate(menu_items):
@@ -274,8 +274,8 @@ class NetworkManagementSuite:
             self.show_dashboard()
         elif view_name == "robont":
             self.show_robont_manager()
-        elif view_name == "ise":
-            self.show_ise_config()
+        elif view_name == "juniper":
+            self.show_juniper_config()
     
     def show_dashboard(self):
         """Affiche le tableau de bord"""
@@ -311,7 +311,7 @@ class NetworkManagementSuite:
                         command=lambda: self.switch_view("robont"))
         btn1.pack(pady=(0, 20), padx=20, fill='x')
         
-        # Card 2 - ISE Switch Config
+        # Card 2 - Juniper Configuration Tool
         card2 = tk.Frame(cards_frame, bg='white', relief='raised', bd=2)
         card2.pack(side='left', fill='both', expand=True, padx=(15, 0))
         
@@ -323,7 +323,7 @@ class NetworkManagementSuite:
         
         btn2 = tk.Button(card2, text="Accéder", font=('Arial', 10, 'bold'), 
                         bg='#e67e22', fg='white', relief='flat', pady=8,
-                        command=lambda: self.switch_view("ise"))
+                        command=lambda: self.switch_view("juniper"))
         btn2.pack(pady=(0, 20), padx=20, fill='x')
         
         # Informations système
@@ -375,7 +375,7 @@ class NetworkManagementSuite:
         info_text.config(state='disabled')
     
     def show_robont_manager(self):
-        """Affiche le gestionnaire Robont (interface originale)"""
+        """Affiche le gestionnaire Robont"""
         # Titre
         title_frame = tk.Frame(self.main_area, bg='#2c3e50', height=60)
         title_frame.pack(fill='x', padx=0, pady=0)
@@ -385,133 +385,21 @@ class NetworkManagementSuite:
                               font=('Arial', 16, 'bold'), fg='white', bg='#2c3e50')
         title_label.pack(pady=15)
         
-        # Frame principal avec scroll
+        # Frame principal
         main_frame = tk.Frame(self.main_area, bg='#f0f0f0')
         main_frame.pack(fill='both', expand=True, padx=20, pady=20)
         
-        # === SECTION SERVEUR ROBONT ===
-        server_frame = tk.LabelFrame(main_frame, text="SERVEUR ROBONT", 
-                                   font=('Arial', 12, 'bold'), bg='#f0f0f0', fg='#2c3e50')
-        server_frame.pack(fill='x', pady=(0, 15))
-        
-        # IP Serveur (lecture seule)
-        tk.Label(server_frame, text="Adresse IP:", font=('Arial', 10), 
-                bg='#f0f0f0').grid(row=0, column=0, sticky='w', padx=10, pady=5)
-        
-        server_ip_entry = tk.Entry(server_frame, font=('Arial', 10), width=20, state='readonly')
-        server_ip_entry.insert(0, "6.91.128.111")
-        server_ip_entry.grid(row=0, column=1, padx=10, pady=5)
-        
-        # Utilisateur serveur
-        tk.Label(server_frame, text="Utilisateur:", font=('Arial', 10), 
-                bg='#f0f0f0').grid(row=1, column=0, sticky='w', padx=10, pady=5)
-        
-        self.server_user_entry = tk.Entry(server_frame, font=('Arial', 10), width=20)
-        self.server_user_entry.grid(row=1, column=1, padx=10, pady=5)
-        
-        # Mot de passe serveur
-        tk.Label(server_frame, text="Mot de passe:", font=('Arial', 10), 
-                bg='#f0f0f0').grid(row=2, column=0, sticky='w', padx=10, pady=5)
-        
-        self.server_pass_entry = tk.Entry(server_frame, font=('Arial', 10), width=20, show='*')
-        self.server_pass_entry.grid(row=2, column=1, padx=10, pady=5)
-        
-        # === SECTION SWITCH ===
-        switch_frame = tk.LabelFrame(main_frame, text="SWITCH RESEAU", 
-                                   font=('Arial', 12, 'bold'), bg='#f0f0f0', fg='#2c3e50')
-        switch_frame.pack(fill='x', pady=(0, 15))
-        
-        # IP Switch
-        tk.Label(switch_frame, text="Adresse IP:", font=('Arial', 10), 
-                bg='#f0f0f0').grid(row=0, column=0, sticky='w', padx=10, pady=5)
-        
-        self.switch_ip_entry = tk.Entry(switch_frame, font=('Arial', 10), width=20)
-        self.switch_ip_entry.insert(0, "10.148.62.241")  # Valeur par défaut
-        self.switch_ip_entry.grid(row=0, column=1, padx=10, pady=5)
-        
-        # Utilisateur switch
-        tk.Label(switch_frame, text="Utilisateur:", font=('Arial', 10), 
-                bg='#f0f0f0').grid(row=1, column=0, sticky='w', padx=10, pady=5)
-        
-        self.switch_user_entry = tk.Entry(switch_frame, font=('Arial', 10), width=20)
-        self.switch_user_entry.grid(row=1, column=1, padx=10, pady=5)
-        
-        # Mot de passe switch
-        tk.Label(switch_frame, text="Mot de passe:", font=('Arial', 10), 
-                bg='#f0f0f0').grid(row=2, column=0, sticky='w', padx=10, pady=5)
-        
-        self.switch_pass_entry = tk.Entry(switch_frame, font=('Arial', 10), width=20, show='*')
-        self.switch_pass_entry.grid(row=2, column=1, padx=10, pady=5)
-        
-        # === BOUTONS D'ACTION ===
-        buttons_frame = tk.Frame(main_frame, bg='#f0f0f0')
-        buttons_frame.pack(fill='x', pady=(0, 15))
-        
-        # Bouton de connexion
-        self.connect_btn = tk.Button(buttons_frame, text="SE CONNECTER ET RECUPERER CONFIG", 
-                                   font=('Arial', 12, 'bold'), bg='#27ae60', fg='white',
-                                   command=self.start_connection, height=2, width=35)
-        self.connect_btn.pack(side='left', padx=5)
-        
-        # Bouton test connexion
-        test_btn = tk.Button(buttons_frame, text="TESTER CONNEXION", 
-                           font=('Arial', 10), bg='#3498db', fg='white',
-                           command=self.test_connection, height=2, width=15)
-        test_btn.pack(side='left', padx=5)
-        
-        # Bouton effacer
-        clear_btn = tk.Button(buttons_frame, text="EFFACER", 
-                            font=('Arial', 10), bg='#e74c3c', fg='white',
-                            command=self.clear_fields, height=2, width=10)
-        clear_btn.pack(side='left', padx=5)
-        
-        # === BARRE DE PROGRESSION ===
-        self.progress_frame = tk.Frame(main_frame, bg='#f0f0f0')
-        self.progress_frame.pack(fill='x', pady=(0, 10))
-        
-        self.progress_bar = ttk.Progressbar(self.progress_frame, mode='indeterminate')
-        self.progress_bar.pack(fill='x')
-        
-        self.status_label = tk.Label(self.progress_frame, text="Pret", 
-                                   font=('Arial', 9), bg='#f0f0f0', fg='#7f8c8d')
-        self.status_label.pack(pady=5)
-        
-        # === ZONE DE RÉSULTATS ===
-        results_frame = tk.LabelFrame(main_frame, text="CONFIGURATION RECUPEREE", 
-                                    font=('Arial', 12, 'bold'), bg='#f0f0f0', fg='#2c3e50')
-        results_frame.pack(fill='both', expand=True)
-        
-        # Zone de texte avec scroll
-        self.results_text = scrolledtext.ScrolledText(results_frame, font=('Courier', 9), 
-                                                     wrap='none', height=20)
-        self.results_text.pack(fill='both', expand=True, padx=10, pady=10)
-        
-        # Boutons de sauvegarde
-        save_frame = tk.Frame(results_frame, bg='#f0f0f0')
-        save_frame.pack(fill='x', padx=10, pady=(0, 10))
-        
-        self.save_btn = tk.Button(save_frame, text="SAUVEGARDER", 
-                                font=('Arial', 10), bg='#f39c12', fg='white',
-                                command=self.save_config, state='disabled')
-        self.save_btn.pack(side='left', padx=5)
-        
-        # Nouveau bouton de téléchargement
-        self.download_btn = tk.Button(save_frame, text="TÉLÉCHARGER", 
-                                    font=('Arial', 10), bg='#8e44ad', fg='white',
-                                    command=self.download_config, state='disabled')
-        self.download_btn.pack(side='left', padx=5)
-        
-        self.open_folder_btn = tk.Button(save_frame, text="OUVRIR DOSSIER", 
-                                       font=('Arial', 10), bg='#9b59b6', fg='white',
-                                       command=self.open_save_folder, state='disabled')
-        self.open_folder_btn.pack(side='left', padx=5)
-        
-        # Info hostname
-        self.hostname_label = tk.Label(save_frame, text="", 
-                                     font=('Arial', 9, 'italic'), bg='#f0f0f0', fg='#27ae60')
-        self.hostname_label.pack(side='right', padx=5)
+        # Message temporaire
+        temp_label = tk.Label(main_frame, 
+                             text="Interface Robont Switch Manager\n\n"
+                                  "Fonctionnalités à implémenter :\n"
+                                  "• Connexion SSH au serveur Robont\n"
+                                  "• Récupération des configurations switch\n"
+                                  "• Export et sauvegarde",
+                             font=('Arial', 12), bg='#f0f0f0', fg='#7f8c8d')
+        temp_label.pack(expand=True)
     
-    def show_ise_config(self):
+    def show_juniper_config(self):
         """Affiche l'interface Juniper Configuration Tool complète"""
         # Titre
         title_frame = tk.Frame(self.main_area, bg='#e67e22', height=60)
@@ -556,13 +444,12 @@ class NetworkManagementSuite:
         
         self.clear_config_btn = tk.Button(upload_buttons_frame, text="EFFACER", 
                                         font=('Arial', 10), bg='#e74c3c', fg='white',
-                                        command=self.clear_ise_config, width=15, state='disabled')
+                                        command=self.clear_juniper_config, width=15, state='disabled')
         self.clear_config_btn.pack(side='left', padx=5)
         
         # === SECTION INFORMATIONS SWITCH ===
         self.info_frame = tk.LabelFrame(main_frame, text="INFORMATIONS DU SWITCH", 
                                       font=('Arial', 12, 'bold'), bg='#f0f0f0', fg='#e67e22')
-        self.info_frame.pack(fill='x', pady=(0, 15))
         
         # Création des labels d'information
         info_grid_frame = tk.Frame(self.info_frame, bg='#f0f0f0')
@@ -589,7 +476,6 @@ class NetworkManagementSuite:
         # === SECTION INTERFACES ===
         self.interfaces_frame = tk.LabelFrame(main_frame, text="INTERFACES ACCESS DÉTECTÉES", 
                                             font=('Arial', 12, 'bold'), bg='#f0f0f0', fg='#e67e22')
-        self.interfaces_frame.pack(fill='x', pady=(0, 15))
         
         self.interfaces_text = tk.Text(self.interfaces_frame, font=('Courier', 9), height=5, 
                                      bg='white', relief='sunken', state='disabled')
@@ -681,12 +567,8 @@ class NetworkManagementSuite:
                                            command=lambda: self.download_single_config(self.radius_config, "radius_config.txt"),
                                            state='disabled')
         self.download_radius_btn.pack(side='left', padx=5)
-        
-        # Initialiser l'état disabled
-        self.info_frame.pack_forget()
-        self.interfaces_frame.pack_forget()
     
-    # === MÉTHODES ISE CONFIG ===
+    # === MÉTHODES JUNIPER CONFIG ===
     
     def select_config_file(self, event=None):
         """Sélectionne un fichier de configuration"""
@@ -904,8 +786,8 @@ class NetworkManagementSuite:
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors du téléchargement:\n{e}")
     
-    def clear_ise_config(self):
-        """Efface la configuration ISE chargée"""
+    def clear_juniper_config(self):
+        """Efface la configuration Juniper chargée"""
         self.uploaded_config = ""
         self.parsed_config = None
         self.switch_info = {}
@@ -938,478 +820,14 @@ class NetworkManagementSuite:
         self.copy_radius_btn.config(state='disabled')
         self.download_radius_btn.config(state='disabled')
         self.download_all_btn.config(state='disabled')
-    
-    # === MÉTHODES ROBONT (inchangées) ===
-    
-    def validate_fields(self):
-        """Valide les champs saisis"""
-        if not hasattr(self, 'server_user_entry'):
-            return False
-            
-        if not self.server_user_entry.get().strip():
-            messagebox.showerror("Erreur", "Nom d'utilisateur serveur requis")
-            return False
-            
-        if not self.server_pass_entry.get().strip():
-            messagebox.showerror("Erreur", "Mot de passe serveur requis")
-            return False
-            
-        if not self.switch_ip_entry.get().strip():
-            messagebox.showerror("Erreur", "Adresse IP switch requise")
-            return False
-            
-        if not self.switch_user_entry.get().strip():
-            messagebox.showerror("Erreur", "Nom d'utilisateur switch requis")
-            return False
-        
-        # Validation IP
-        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
-        if not re.match(ip_pattern, self.switch_ip_entry.get().strip()):
-            messagebox.showerror("Erreur", "Format d'adresse IP switch invalide")
-            return False
-        
-        return True
-    
-    def update_status(self, message, color='#7f8c8d'):
-        """Met à jour le statut"""
-        if hasattr(self, 'status_label'):
-            self.status_label.config(text=message, fg=color)
-            self.root.update()
-    
-    def start_connection(self):
-        """Démarre la connexion dans un thread séparé"""
-        if not self.validate_fields():
-            return
-            
-        if self.is_connecting:
-            return
-            
-        self.is_connecting = True
-        self.connect_btn.config(state='disabled', text="CONNEXION EN COURS...")
-        self.progress_bar.start()
-        self.results_text.delete(1.0, tk.END)
-        
-        # Lancer dans un thread pour éviter de bloquer l'interface
-        thread = threading.Thread(target=self.execute_connection)
-        thread.daemon = True
-        thread.start()
-    
-    def execute_connection(self):
-        """Exécute la connexion complète"""
-        try:
-            # Récupérer les valeurs
-            server_host = "6.91.128.111"
-            server_user = self.server_user_entry.get().strip()
-            server_pass = self.server_pass_entry.get().strip()
-            switch_ip = self.switch_ip_entry.get().strip()
-            switch_user = self.switch_user_entry.get().strip()
-            switch_pass = self.switch_pass_entry.get().strip()
-            
-            # Étape 1: Connexion serveur
-            self.update_status("Connexion au serveur Robont...", '#3498db')
-            if not self.connect_to_server(server_host, server_user, server_pass):
-                return  # Arrêter si connexion serveur échoue
-            
-            # Étape 2: Connexion switch
-            self.update_status("Connexion au switch...", '#3498db')
-            if not self.connect_to_switch(switch_ip, switch_user, switch_pass):
-                return  # Arrêter si connexion switch échoue
-            
-            # Étape 3: Récupération config
-            self.update_status("Récupération de la configuration...", '#3498db')
-            config_data = self.get_configuration()
-            
-            if config_data:
-                # Sauvegarder les données pour téléchargement
-                self.config_data = config_data
-                # Afficher dans l'interface
-                self.root.after(0, self.display_results, config_data)
-                self.update_status("Configuration récupérée avec succès!", '#27ae60')
-            else:
-                self.update_status("Échec récupération configuration", '#e74c3c')
-                messagebox.showerror("Erreur", 
-                    "Impossible de récupérer la configuration du switch:\n"
-                    "• Vérifiez que la commande est supportée\n"
-                    "• Vérifiez les permissions de l'utilisateur")
-                
-        except Exception as e:
-            self.update_status("Erreur: " + str(e), '#e74c3c')
-            messagebox.showerror("Erreur", "Erreur inattendue: " + str(e))
-        finally:
-            self.cleanup_connection()
-    
-    def connect_to_server(self, host, username, password):
-        """Connexion au serveur Robont"""
-        try:
-            self.ssh_client = paramiko.SSHClient()
-            self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            
-            self.ssh_client.connect(
-                hostname=host,
-                port=22,
-                username=username,
-                password=password,
-                timeout=30
-            )
-            
-            self.channel = self.ssh_client.invoke_shell()
-            self.channel.settimeout(30)
-            time.sleep(2)
-            
-            # Lire prompt initial
-            self.read_channel_output(timeout=5)
-            return True
-            
-        except paramiko.AuthenticationException:
-            self.update_status("Échec authentification serveur", '#e74c3c')
-            messagebox.showerror("Erreur", "Mot de passe serveur incorrect")
-            return False
-        except Exception as e:
-            self.update_status("Erreur serveur: " + str(e), '#e74c3c')
-            messagebox.showerror("Erreur", "Erreur connexion serveur: " + str(e))
-            return False
-    
-    def connect_to_switch(self, switch_ip, username, password):
-        """Connexion au switch"""
-        try:
-            ssh_cmd = "ssh " + username + "@" + switch_ip + "\n"
-            self.channel.send(ssh_cmd)
-            time.sleep(3)
-            
-            output = self.read_channel_output(timeout=15)
-            
-            # Vérifier les erreurs de connexion
-            if any(error in output.lower() for error in [
-                "connection refused", "connection timed out", "no route to host",
-                "host unreachable", "network is unreachable", "connection closed",
-                "could not resolve hostname", "name or service not known"
-            ]):
-                self.update_status("Problème de connexion au switch", '#e74c3c')
-                messagebox.showerror("Erreur de Connexion", 
-                    "Problème de connexion vers le switch:\n"
-                    "• Vérifiez l'adresse IP du switch\n"
-                    "• Vérifiez que le switch est accessible depuis le serveur Robont\n"
-                    "• Vérifiez la connectivité réseau")
-                return False
-            
-            # Si mot de passe demandé
-            if "password:" in output.lower():
-                if not password.strip():
-                    self.update_status("Mot de passe switch requis", '#e74c3c')
-                    messagebox.showerror("Erreur", "Mot de passe switch requis")
-                    return False
-                
-                self.channel.send(password + "\n")
-                time.sleep(3)
-                auth_output = self.read_channel_output(timeout=10)
-                
-                # Vérifier échec authentification
-                if any(word in auth_output.lower() for word in [
-                    "denied", "failed", "incorrect", "authentication failure",
-                    "access denied", "login failed", "invalid password"
-                ]):
-                    self.update_status("Mot de passe switch erroné", '#e74c3c')
-                    messagebox.showerror("Erreur d'Authentification", 
-                        "Mot de passe erroné pour le switch:\n"
-                        "• Vérifiez le mot de passe du switch\n"
-                        "• Assurez-vous que les credentials sont corrects")
-                    return False
-            
-            # Tentative d'entrer en mode CLI
-            self.channel.send("cli\n")
-            time.sleep(2)
-            cli_output = self.read_channel_output(timeout=5)
-            
-            self.update_status("Connexion switch réussie", '#27ae60')
-            return True
-            
-        except Exception as e:
-            self.update_status("Erreur switch: " + str(e), '#e74c3c')
-            messagebox.showerror("Erreur de Connexion", 
-                "Erreur inattendue lors de la connexion au switch:\n" + str(e))
-            return False
-    
-    def get_configuration(self):
-        """Récupère la configuration avec la nouvelle commande"""
-        try:
-            # Nouvelle commande modifiée
-            config_cmd = "show configuration | display set | no-more\n"
-            self.channel.send(config_cmd)
-            time.sleep(5)
-            
-            output = self.read_channel_output(timeout=60)
-            
-            if output.strip():
-                # Extraire hostname
-                self.switch_hostname = self.extract_hostname(output)
-                return output
-            
-            return None
-            
-        except Exception as e:
-            print("Erreur récupération config: " + str(e))
-            return None
-    
-    def read_channel_output(self, timeout=15):
-        """Lit la sortie du channel"""
-        output = ""
-        start_time = time.time()
-        
-        while time.time() - start_time < timeout:
-            if self.channel.recv_ready():
-                data = self.channel.recv(4096).decode('utf-8', errors='ignore')
-                output += data
-                time.sleep(0.1)
-            else:
-                time.sleep(0.2)
-                if time.time() - start_time > 3 and output:
-                    break
-        
-        return output
-    
-    def extract_hostname(self, config_data):
-        """Extrait le hostname"""
-        patterns = [
-            r'set system host-name\s+(\S+)',
-            r'set hostname\s+(\S+)',
-            r'hostname\s+(\S+)',
-            r'host-name\s+(\S+)'
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, config_data, re.IGNORECASE)
-            if match:
-                hostname = re.sub(r'[";\']+', '', match.group(1))
-                return hostname
-        
-        return "switch"
-    
-    def display_results(self, config_data):
-        """Affiche les résultats dans l'interface"""
-        if hasattr(self, 'results_text'):
-            self.results_text.delete(1.0, tk.END)
-            self.results_text.insert(tk.END, config_data)
-            
-            # Activer boutons
-            self.save_btn.config(state='normal')
-            self.download_btn.config(state='normal')
-            self.open_folder_btn.config(state='normal')
-            
-            # Afficher hostname
-            if self.switch_hostname:
-                self.hostname_label.config(text="Hostname: " + self.switch_hostname)
-    
-    def save_config(self):
-        """Sauvegarde la configuration dans le répertoire courant"""
-        try:
-            if not hasattr(self, 'results_text'):
-                return
-                
-            config_data = self.results_text.get(1.0, tk.END)
-            if not config_data.strip():
-                messagebox.showwarning("Attention", "Aucune configuration à sauvegarder")
-                return
-            
-            # Nom de fichier basé sur le hostname ou "switch" par défaut
-            if self.switch_hostname:
-                filename = self.switch_hostname + ".txt"
-            else:
-                filename = "switch.txt"
-            
-            # Nettoyer le nom
-            filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
-            
-            # Sauvegarder
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write("# Configuration récupérée le " + str(datetime.now()) + "\n")
-                f.write("# Serveur Robont: 6.91.128.111\n")
-                f.write("# Switch IP: " + self.switch_ip_entry.get() + "\n")
-                if self.switch_hostname:
-                    f.write("# Switch Hostname: " + self.switch_hostname + "\n")
-                f.write("#" + "="*50 + "\n\n")
-                f.write(config_data)
-            
-            messagebox.showinfo("Succès", "Configuration sauvegardée dans:\n" + filename)
-            
-        except Exception as e:
-            messagebox.showerror("Erreur", "Erreur sauvegarde: " + str(e))
-    
-    def download_config(self):
-        """Télécharge la configuration avec dialogue de sauvegarde"""
-        try:
-            if not hasattr(self, 'results_text'):
-                return
-                
-            config_data = self.results_text.get(1.0, tk.END)
-            if not config_data.strip():
-                messagebox.showwarning("Attention", "Aucune configuration à télécharger")
-                return
-            
-            # Nom de fichier par défaut basé sur le hostname ou "switch"
-            if self.switch_hostname:
-                default_filename = self.switch_hostname + ".txt"
-            else:
-                default_filename = "switch.txt"
-            
-            # Nettoyer le nom
-            default_filename = re.sub(r'[<>:"/\\|?*]', '_', default_filename)
-            
-            # Dialogue de sauvegarde
-            filename = filedialog.asksaveasfilename(
-                title="Télécharger la configuration",
-                defaultextension=".txt",
-                initialname=default_filename,
-                filetypes=[
-                    ("Fichiers texte", "*.txt"),
-                    ("Tous les fichiers", "*.*")
-                ]
-            )
-            
-            if filename:
-                # Sauvegarder avec en-tête
-                with open(filename, 'w', encoding='utf-8') as f:
-                    f.write("# Configuration récupérée le " + str(datetime.now()) + "\n")
-                    f.write("# Serveur Robont: 6.91.128.111\n")
-                    f.write("# Switch IP: " + self.switch_ip_entry.get() + "\n")
-                    if self.switch_hostname:
-                        f.write("# Switch Hostname: " + self.switch_hostname + "\n")
-                    f.write("#" + "="*50 + "\n\n")
-                    f.write(config_data)
-                
-                messagebox.showinfo("Succès", "Configuration téléchargée dans:\n" + filename)
-            
-        except Exception as e:
-            messagebox.showerror("Erreur", "Erreur téléchargement: " + str(e))
-    
-    def open_save_folder(self):
-        """Ouvre le dossier de sauvegarde"""
-        try:
-            os.startfile('.')  # Windows
-        except:
-            try:
-                os.system('open .')  # macOS
-            except:
-                os.system('xdg-open .')  # Linux
-    
-    def test_connection(self):
-        """Test rapide de connexion"""
-        if not self.validate_fields():
-            return
-            
-        self.update_status("Test de connexion...", '#f39c12')
-        
-        def test():
-            try:
-                ssh_client = paramiko.SSHClient()
-                ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                
-                ssh_client.connect(
-                    hostname="6.91.128.111",
-                    port=22,
-                    username=self.server_user_entry.get().strip(),
-                    password=self.server_pass_entry.get().strip(),
-                    timeout=15
-                )
-                
-                ssh_client.close()
-                self.root.after(0, lambda: self.update_status("Test réussi!", '#27ae60'))
-                self.root.after(0, lambda: messagebox.showinfo("Test", "Connexion serveur réussie!"))
-                
-            except Exception as e:
-                self.root.after(0, lambda: self.update_status("Test échoué", '#e74c3c'))
-                self.root.after(0, lambda: messagebox.showerror("Test", "Échec connexion: " + str(e)))
-        
-        thread = threading.Thread(target=test)
-        thread.daemon = True
-        thread.start()
-    
-    def clear_fields(self):
-        """Efface tous les champs"""
-        if hasattr(self, 'server_user_entry'):
-            self.server_user_entry.delete(0, tk.END)
-            self.server_pass_entry.delete(0, tk.END)
-            self.switch_user_entry.delete(0, tk.END)
-            self.switch_pass_entry.delete(0, tk.END)
-            self.switch_ip_entry.delete(0, tk.END)
-            self.switch_ip_entry.insert(0, "10.148.62.241")
-            self.results_text.delete(1.0, tk.END)
-            self.hostname_label.config(text="")
-            self.save_btn.config(state='disabled')
-            self.download_btn.config(state='disabled')
-            self.open_folder_btn.config(state='disabled')
-            self.config_data = ""
-            self.update_status("Pret")
-    
-    def cleanup_connection(self):
-        """Nettoie les connexions"""
-        self.is_connecting = False
-        self.root.after(0, lambda: self.connect_btn.config(state='normal', text="SE CONNECTER ET RECUPERER CONFIG") if hasattr(self, 'connect_btn') else None)
-        self.root.after(0, lambda: self.progress_bar.stop() if hasattr(self, 'progress_bar') else None)
-        
-        try:
-            if self.channel:
-                self.channel.send("exit\n")
-                time.sleep(1)
-                self.channel.send("exit\n")
-                time.sleep(1)
-                self.channel.close()
-            if self.ssh_client:
-                self.ssh_client.close()
-        except:
-            pass
+
 
 def main():
-    """Fonction principale"""
-    try:
-        # Initialisation de l'interface
-        root = tk.Tk()
-        
-        # Gestion des erreurs d'affichage
-        try:
-            app = NetworkManagementSuite(root)
-        except Exception as e:
-            messagebox.showerror("Erreur d'initialisation", 
-                f"Erreur lors de l'initialisation de l'interface:\n{e}")
-            root.destroy()
-            return
-        
-        # Centrer la fenêtre
-        try:
-            root.update_idletasks()
-            x = (root.winfo_screenwidth() // 2) - (1400 // 2)
-            y = (root.winfo_screenheight() // 2) - (1000 // 2)
-            root.geometry(f"1400x1000+{x}+{y}")
-        except:
-            # Fallback si problème de centrage
-            root.geometry("1400x1000")
-        
-        # Démarrer l'application
-        root.mainloop()
-        
-    except Exception as e:
-        print(f"Erreur fatale: {e}")
-        try:
-            messagebox.showerror("Erreur fatale", f"L'application ne peut pas démarrer:\n{e}")
-        except:
-            print("Impossible d'afficher le message d'erreur graphique")
-        sys.exit(1)
+    """Point d'entrée principal de l'application"""
+    root = tk.Tk()
+    app = NetworkManagementSuite(root)
+    root.mainloop()
+
 
 if __name__ == "__main__":
-    print("=== Network Management Suite v2.0 ===")
-    print("Démarrage de l'application...")
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\nArrêt de l'application par l'utilisateur")
-    except Exception as e:
-        print(f"Erreur non gérée: {e}")
-        try:
-            messagebox.showerror("Erreur non gérée", f"{e}")
-        except:
-            pass
-    finally:
-        if sys.platform.startswith("win") and not sys.stdin.isatty():
-            try:
-                input("\nAppuyez sur Entrée pour fermer...")
-            except EOFError:
-                pass
+    main()

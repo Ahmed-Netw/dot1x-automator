@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { FileUpload } from '@/components/FileUpload';
 import { SwitchInfo } from '@/components/SwitchInfo';
 import { InterfaceList } from '@/components/InterfaceList';
 import { ConfigurationOutput } from '@/components/ConfigurationOutput';
 import { ConfigurationParser } from '@/components/ConfigurationParser';
-import { Router } from 'lucide-react';
+import { Router, Network } from 'lucide-react';
 
 const Index = () => {
   const [configContent, setConfigContent] = useState<string>('');
@@ -36,6 +38,15 @@ const Index = () => {
             Outil de configuration automatique pour switches Juniper - 
             Ajout de 802.1X et configuration RADIUS
           </p>
+          
+          <div className="flex justify-center gap-4 mt-6">
+            <Link to="/connection">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Network className="h-4 w-4" />
+                Connexion SSH aux Équipements
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="space-y-8">

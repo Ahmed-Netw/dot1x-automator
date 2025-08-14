@@ -74,7 +74,7 @@ class ConfigurationParser:
                     ip_index = parts.index('address') + 1
                     if ip_index < len(parts):
                         ip = parts[ip_index].split('/')[0]
-                        if ip.startswith('10.148.') or '192.168.' in ip:
+                        if ip.startsWith('10.148.') or '192.168.' in ip:
                             info['management_ip'] = ip
                 except (ValueError, IndexError):
                     pass

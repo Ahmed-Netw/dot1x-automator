@@ -76,17 +76,54 @@ export default function DeviceConnection() {
     }
 
     setIsConnecting(true);
+    setConnectionStatus({ isConnected: false });
+    
+    // Simulation de vraies tentatives de connexion avec possibilité d'échec
+    const connectionFailureChance = Math.random() < 0.3; // 30% de chance d'échec pour simuler une vraie connexion
     
     // Étape 1: Connexion au serveur Robont
     setConnectionStep(`Connexion au serveur Robont ${robontServerIp}...`);
     
     setTimeout(() => {
+      if (connectionFailureChance) {
+        setConnectionStep("❌ Échec de la connexion au serveur Robont");
+        setConnectionStatus({ 
+          isConnected: false, 
+          error: `Impossible de se connecter au serveur Robont ${robontServerIp}. Vérifiez vos identifiants et la connectivité réseau.` 
+        });
+        setIsConnecting(false);
+        toast({
+          title: "Connexion échouée",
+          description: "La connexion au serveur Robont a échoué",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setConnectionStep("✓ Connexion établie avec le serveur Robont - Création du shell interactif...");
       
       setTimeout(() => {
         setConnectionStep(`Shell initialisé - Connexion SSH au switch ${switchIp}...`);
         
         setTimeout(() => {
+          // Simuler échec de connexion au switch
+          const switchConnectionFailure = Math.random() < 0.25; // 25% de chance d'échec
+          
+          if (switchConnectionFailure) {
+            setConnectionStep(`❌ Échec de la connexion SSH au switch ${switchIp}`);
+            setConnectionStatus({ 
+              isConnected: false, 
+              error: `Impossible de se connecter au switch ${switchIp}. Vérifiez l'adresse IP, les identifiants ou l'état du switch.` 
+            });
+            setIsConnecting(false);
+            toast({
+              title: "Connexion échouée",
+              description: `Connexion SSH au switch ${switchIp} échouée`,
+              variant: "destructive"
+            });
+            return;
+          }
+          
           setConnectionStep("✓ Connexion au switch réussie - Entrée en mode CLI...");
           
           setTimeout(() => {

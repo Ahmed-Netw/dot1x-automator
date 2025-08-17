@@ -29,8 +29,17 @@ export class ConfigurationParser {
         info.hostname = trimmed.split(' ')[3];
       }
       
-      // Extract management IP - improved detection
-      if (trimmed.includes('set interfaces') && trimmed.includes('unit 0 family inet address')) {
+      // PRIORITY: Extract VLAN 160 (VL160_ADMIN) IP address - both syntaxes
+      const vlan160Match = trimmed.match(/^set interfaces vlan(?:\.| unit )160 .*family inet address (\S+)/);
+      if (vlan160Match) {
+        const ip = vlan160Match[1].split('/')[0];
+        info.vlan160Ip = ip;
+        info.managementIp = ip; // VLAN 160 is the management IP
+        continue;
+      }
+      
+      // Extract other management IPs only if VLAN 160 not found yet
+      if (!info.managementIp && trimmed.includes('set interfaces') && trimmed.includes('unit 0 family inet address')) {
         const parts = trimmed.split(' ');
         const ipIndex = parts.findIndex(part => part === 'address') + 1;
         if (ipIndex > 0 && parts[ipIndex]) {
@@ -42,17 +51,8 @@ export class ConfigurationParser {
         }
       }
       
-      // Extract VLAN 160 (VL160_ADMIN) IP address
-      if (trimmed.includes('set interfaces vlan.160') && trimmed.includes('family inet address')) {
-        const parts = trimmed.split(' ');
-        const ipIndex = parts.findIndex(part => part === 'address') + 1;
-        if (ipIndex > 0 && parts[ipIndex]) {
-          info.vlan160Ip = parts[ipIndex].split('/')[0];
-        }
-      }
-      
-      // Also look for VLAN interfaces that might be management
-      if (trimmed.includes('set interfaces vlan') && trimmed.includes('family inet address')) {
+      // Also look for other VLAN interfaces only if management IP not set
+      if (!info.managementIp && trimmed.includes('set interfaces vlan') && trimmed.includes('family inet address')) {
         const parts = trimmed.split(' ');
         const ipIndex = parts.findIndex(part => part === 'address') + 1;
         if (ipIndex > 0 && parts[ipIndex]) {

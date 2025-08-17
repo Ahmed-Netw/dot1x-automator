@@ -60,6 +60,7 @@ const Index = () => {
               <SwitchInfo 
                 hostname={switchInfo?.hostname}
                 managementIp={switchInfo?.managementIp}
+                vlan160Ip={switchInfo?.vlan160Ip}
                 interfaceCount={interfaces.length}
               />
 

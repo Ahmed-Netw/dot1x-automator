@@ -7,6 +7,7 @@ interface Interface {
 interface SwitchInfo {
   hostname?: string;
   managementIp?: string;
+  vlan160Ip?: string;
 }
 
 export class ConfigurationParser {
@@ -38,6 +39,15 @@ export class ConfigurationParser {
           if (ip.startsWith('10.148.') || ip.includes('192.168.') || !info.managementIp) {
             info.managementIp = ip;
           }
+        }
+      }
+      
+      // Extract VLAN 160 (VL160_ADMIN) IP address
+      if (trimmed.includes('set interfaces vlan.160') && trimmed.includes('family inet address')) {
+        const parts = trimmed.split(' ');
+        const ipIndex = parts.findIndex(part => part === 'address') + 1;
+        if (ipIndex > 0 && parts[ipIndex]) {
+          info.vlan160Ip = parts[ipIndex].split('/')[0];
         }
       }
       

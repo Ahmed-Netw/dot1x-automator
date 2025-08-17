@@ -5,10 +5,11 @@ import { Router, Globe, Server } from 'lucide-react';
 interface SwitchInfoProps {
   hostname?: string;
   managementIp?: string;
+  vlan160Ip?: string;
   interfaceCount: number;
 }
 
-export const SwitchInfo = ({ hostname, managementIp, interfaceCount }: SwitchInfoProps) => {
+export const SwitchInfo = ({ hostname, managementIp, vlan160Ip, interfaceCount }: SwitchInfoProps) => {
   return (
     <Card>
       <CardHeader>
@@ -21,7 +22,7 @@ export const SwitchInfo = ({ hostname, managementIp, interfaceCount }: SwitchInf
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
             <Server className="h-4 w-4 text-tech-primary" />
             <div>
@@ -35,6 +36,14 @@ export const SwitchInfo = ({ hostname, managementIp, interfaceCount }: SwitchInf
             <div>
               <p className="text-sm font-medium">IP Management</p>
               <p className="text-lg">{managementIp || 'Non trouvé'}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <Globe className="h-4 w-4 text-tech-accent" />
+            <div>
+              <p className="text-sm font-medium">VLAN 160 Admin</p>
+              <p className="text-lg">{vlan160Ip || 'Non trouvé'}</p>
             </div>
           </div>
           

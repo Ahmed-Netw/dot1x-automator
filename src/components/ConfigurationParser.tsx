@@ -2,6 +2,7 @@ interface Interface {
   name: string;
   config: string[];
   isAccess: boolean;
+  description?: string;
 }
 
 interface SwitchInfo {
@@ -91,6 +92,20 @@ export class ConfigurationParser {
           const iface = interfaces.get(interfaceName)!;
           iface.config.push(trimmed);
           
+          // Extract description if present
+          if (trimmed.includes('description')) {
+            const descMatch = trimmed.match(/description\s+"([^"]+)"/);
+            if (descMatch) {
+              iface.description = descMatch[1];
+            } else {
+              // Handle description without quotes
+              const descIndex = parts.findIndex(part => part === 'description') + 1;
+              if (descIndex > 0 && parts[descIndex]) {
+                iface.description = parts.slice(descIndex).join(' ').replace(/"/g, '');
+              }
+            }
+          }
+          
           // Check if it's an access port - improved detection
           if (trimmed.includes('family ethernet-switching port-mode access') || 
               (trimmed.includes('ethernet-switching-options') && trimmed.includes('port-mode access'))) {
@@ -110,6 +125,13 @@ export class ConfigurationParser {
     
     for (const iface of interfaces) {
       if (iface.isAccess) {
+        // Set description based on existing description
+        if (iface.description) {
+          configs.push(`set interfaces ${iface.name} description "802.1x ${iface.description}"`);
+        } else {
+          configs.push(`set interfaces ${iface.name} description "802.1x PC-TEL"`);
+        }
+        
         configs.push(`set protocols dot1x authenticator interface ${iface.name} supplicant multiple`);
         configs.push(`set protocols dot1x authenticator interface ${iface.name} retries 3`);
         configs.push(`set protocols dot1x authenticator interface ${iface.name} transmit-period 1`);

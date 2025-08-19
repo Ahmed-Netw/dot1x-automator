@@ -22,7 +22,7 @@ const Index = () => {
   const switchInfo = parser?.getSwitchInfo();
   const interfaces = parser?.getInterfaces() || [];
   const dot1xConfig = parser?.generateDot1xConfigWildcard(interfaces) || '';
-  const cleanupConfig = parser?.generateCleanupConfig(interfaces) || '';
+  const cleanupConfig = parser?.generateCleanupConfigWildcard(interfaces) || '';
   const radiusConfig = parser?.getRadiusConfig(switchInfo?.managementIp) || '';
 
   return (

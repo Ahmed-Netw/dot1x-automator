@@ -151,7 +151,7 @@ ${cleanupConfig}
           <TabsContent value="cleanup" className="mt-6">
             <ConfigurationCard
               title="Nettoyage des interfaces"
-              description="Commandes pour supprimer la configuration ethernet-switching-options"
+              description="Commandes wildcard range pour supprimer les configurations mac-limit des interfaces access groupées"
               config={cleanupConfig}
               icon={Trash2}
               filename="cleanup-config.txt"

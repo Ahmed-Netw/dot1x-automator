@@ -242,6 +242,27 @@ export class ConfigurationParser {
     return configs.join('\n');
   }
 
+  generateCleanupConfigWildcard(interfaces: Interface[]): string {
+    const configs: string[] = [];
+    const groups = this.groupConsecutive(interfaces);
+    
+    for (const group of groups) {
+      for (const range of group.ranges) {
+        const rangeStr = range.start === range.end 
+          ? `${range.start}` 
+          : `${range.start}-${range.end}`;
+        
+        const interfacePattern = `ge-${group.fpc}/${group.pic}/[${rangeStr}]`;
+        
+        configs.push(`wildcard range delete ethernet-switching-options secure-access-port interface ${interfacePattern} mac-limit 3`);
+        configs.push(`wildcard range delete ethernet-switching-options secure-access-port interface ${interfacePattern} mac-limit action drop`);
+        configs.push('');
+      }
+    }
+    
+    return configs.join('\n');
+  }
+
   getRadiusConfig(managementIp?: string): string {
     const sourceAddress = managementIp || '10.148.62.241';
     return `set access radius-server 10.147.32.47 port 1812

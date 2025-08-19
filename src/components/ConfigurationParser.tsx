@@ -120,6 +120,62 @@ export class ConfigurationParser {
     );
   }
 
+  private parsePort(interfaceName: string): { fpc: number; pic: number; port: number } | null {
+    const match = interfaceName.match(/ge-(\d+)\/(\d+)\/(\d+)/);
+    if (!match) return null;
+    
+    return {
+      fpc: parseInt(match[1]),
+      pic: parseInt(match[2]),
+      port: parseInt(match[3])
+    };
+  }
+
+  private groupConsecutive(interfaces: Interface[]): Array<{fpc: number, pic: number, ranges: Array<{start: number, end: number}>}> {
+    const groups: Map<string, number[]> = new Map();
+    
+    // Group interfaces by fpc/pic
+    for (const iface of interfaces) {
+      if (!iface.isAccess) continue;
+      
+      const parsed = this.parsePort(iface.name);
+      if (!parsed) continue;
+      
+      const key = `${parsed.fpc}/${parsed.pic}`;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(parsed.port);
+    }
+    
+    // Convert to ranges
+    const result: Array<{fpc: number, pic: number, ranges: Array<{start: number, end: number}>}> = [];
+    
+    for (const [key, ports] of groups.entries()) {
+      const [fpc, pic] = key.split('/').map(Number);
+      ports.sort((a, b) => a - b);
+      
+      const ranges: Array<{start: number, end: number}> = [];
+      let start = ports[0];
+      let end = ports[0];
+      
+      for (let i = 1; i < ports.length; i++) {
+        if (ports[i] === end + 1) {
+          end = ports[i];
+        } else {
+          ranges.push({ start, end });
+          start = ports[i];
+          end = ports[i];
+        }
+      }
+      ranges.push({ start, end });
+      
+      result.push({ fpc, pic, ranges });
+    }
+    
+    return result;
+  }
+
   generateDot1xConfig(interfaces: Interface[]): string {
     const configs: string[] = [];
     
@@ -139,6 +195,33 @@ export class ConfigurationParser {
         configs.push(`set protocols dot1x authenticator interface ${iface.name} supplicant-timeout 10`);
         configs.push(`set protocols dot1x authenticator interface ${iface.name} maximum-requests 3`);
         configs.push(`set protocols dot1x authenticator interface ${iface.name} mac-radius`);
+      }
+    }
+    
+    return configs.join('\n');
+  }
+
+  generateDot1xConfigWildcard(interfaces: Interface[]): string {
+    const configs: string[] = [];
+    const groups = this.groupConsecutive(interfaces);
+    
+    for (const group of groups) {
+      for (const range of group.ranges) {
+        const rangeStr = range.start === range.end 
+          ? `${range.start}` 
+          : `${range.start}-${range.end}`;
+        
+        const interfacePattern = `ge-${group.fpc}/${group.pic}/[${rangeStr}]`;
+        
+        configs.push(`wildcard range set interfaces ${interfacePattern} description "802.1x PC-TEL"`);
+        configs.push(`wildcard range set interfaces ${interfacePattern} unit 0 family ethernet-switching vlan members VL2_BUREAUTIQUE_Filaire-Wifi`);
+        configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} supplicant multiple`);
+        configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} retries 3`);
+        configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} transmit-period 1`);
+        configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} reauthentication 3600`);
+        configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} supplicant-timeout 10`);
+        configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} maximum-requests 3`);
+        configs.push('');
       }
     }
     

@@ -140,7 +140,7 @@ ${cleanupConfig}
           <TabsContent value="dot1x" className="mt-6">
             <ConfigurationCard
               title="Configuration 802.1X"
-              description="Configuration à ajouter pour activer 802.1X sur les interfaces access"
+              description="Configuration wildcard range pour activer 802.1X sur les interfaces access avec VLAN VL2_BUREAUTIQUE_Filaire-Wifi"
               config={dot1xConfig}
               icon={Shield}
               filename="dot1x-config.txt"

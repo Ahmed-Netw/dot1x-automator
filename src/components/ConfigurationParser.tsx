@@ -128,9 +128,6 @@ export class ConfigurationParser {
     
     for (const iface of interfaces) {
       if (iface.isAccess) {
-        // Clean up both possible configurations
-        configs.push(`delete interfaces ${iface.name} unit 0 family ethernet-switching`);
-        configs.push(`delete interfaces ${iface.name} ethernet-switching-options`);
         // Remove MAC limit configurations
         configs.push(`delete ethernet-switching-options secure-access-port interface ${iface.name} mac-limit 3`);
         configs.push(`delete ethernet-switching-options secure-access-port interface ${iface.name} mac-limit action`);

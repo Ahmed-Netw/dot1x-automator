@@ -183,7 +183,11 @@ export class ConfigurationParser {
       if (iface.isAccess) {
         // Set description based on existing description
         if (iface.description) {
-          configs.push(`set interfaces ${iface.name} description "802.1x ${iface.description}"`);
+          // Don't duplicate "802.1x " prefix if it already exists
+          const description = iface.description.startsWith('802.1x ') 
+            ? iface.description 
+            : `802.1x ${iface.description}`;
+          configs.push(`set interfaces ${iface.name} description "${description}"`);
         } else {
           configs.push(`set interfaces ${iface.name} description "802.1x PC-TEL"`);
         }
@@ -203,7 +207,13 @@ export class ConfigurationParser {
 
   generateDot1xConfigWildcard(interfaces: Interface[]): string {
     const configs: string[] = [];
-    const groups = this.groupConsecutive(interfaces);
+    
+    // Separate interfaces with and without descriptions
+    const interfacesWithoutDesc = interfaces.filter(iface => iface.isAccess && !iface.description);
+    const interfacesWithDesc = interfaces.filter(iface => iface.isAccess && iface.description);
+    
+    // Generate wildcard ranges for interfaces without descriptions
+    const groups = this.groupConsecutive(interfacesWithoutDesc);
     
     for (const group of groups) {
       for (const range of group.ranges) {
@@ -214,6 +224,33 @@ export class ConfigurationParser {
         const interfacePattern = `ge-${group.fpc}/${group.pic}/[${rangeStr}]`;
         
         configs.push(`wildcard range set interfaces ${interfacePattern} description "802.1x PC-TEL"`);
+        configs.push('');
+      }
+    }
+    
+    // Generate individual descriptions for interfaces with existing descriptions
+    for (const iface of interfacesWithDesc) {
+      const description = iface.description!.startsWith('802.1x ') 
+        ? iface.description 
+        : `802.1x ${iface.description}`;
+      configs.push(`set interfaces ${iface.name} description "${description}"`);
+    }
+    
+    if (interfacesWithDesc.length > 0) {
+      configs.push('');
+    }
+    
+    // Generate wildcard ranges for ALL access interfaces (dot1x settings)
+    const allGroups = this.groupConsecutive(interfaces.filter(iface => iface.isAccess));
+    
+    for (const group of allGroups) {
+      for (const range of group.ranges) {
+        const rangeStr = range.start === range.end 
+          ? `${range.start}` 
+          : `${range.start}-${range.end}`;
+        
+        const interfacePattern = `ge-${group.fpc}/${group.pic}/[${rangeStr}]`;
+        
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} supplicant multiple`);
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} retries 3`);
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} transmit-period 1`);

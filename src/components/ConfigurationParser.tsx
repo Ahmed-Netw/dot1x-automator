@@ -214,7 +214,6 @@ export class ConfigurationParser {
         const interfacePattern = `ge-${group.fpc}/${group.pic}/[${rangeStr}]`;
         
         configs.push(`wildcard range set interfaces ${interfacePattern} description "802.1x PC-TEL"`);
-        configs.push(`wildcard range set interfaces ${interfacePattern} unit 0 family ethernet-switching vlan members VL2_BUREAUTIQUE_Filaire-Wifi`);
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} supplicant multiple`);
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} retries 3`);
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} transmit-period 1`);

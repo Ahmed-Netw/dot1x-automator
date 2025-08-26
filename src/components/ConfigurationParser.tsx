@@ -176,11 +176,15 @@ export class ConfigurationParser {
     return result;
   }
 
+  private shouldExcludeInterface(iface: Interface): boolean {
+    return iface.description?.toLowerCase().includes('interco-orange') || false;
+  }
+
   generateDot1xConfig(interfaces: Interface[]): string {
     const configs: string[] = [];
     
     for (const iface of interfaces) {
-      if (iface.isAccess) {
+      if (iface.isAccess && !this.shouldExcludeInterface(iface)) {
         // Set description based on existing description
         if (iface.description) {
           // Don't duplicate "802.1x " prefix if it already exists
@@ -208,9 +212,9 @@ export class ConfigurationParser {
   generateDot1xConfigWildcard(interfaces: Interface[]): string {
     const configs: string[] = [];
     
-    // Separate interfaces with and without descriptions
-    const interfacesWithoutDesc = interfaces.filter(iface => iface.isAccess && !iface.description);
-    const interfacesWithDesc = interfaces.filter(iface => iface.isAccess && iface.description);
+    // Separate interfaces with and without descriptions, excluding INTERCO-ORANGE
+    const interfacesWithoutDesc = interfaces.filter(iface => iface.isAccess && !iface.description && !this.shouldExcludeInterface(iface));
+    const interfacesWithDesc = interfaces.filter(iface => iface.isAccess && iface.description && !this.shouldExcludeInterface(iface));
     
     // Generate wildcard ranges for interfaces without descriptions
     const groups = this.groupConsecutive(interfacesWithoutDesc);
@@ -240,8 +244,8 @@ export class ConfigurationParser {
       configs.push('');
     }
     
-    // Generate wildcard ranges for ALL access interfaces (dot1x settings)
-    const allGroups = this.groupConsecutive(interfaces.filter(iface => iface.isAccess));
+    // Generate wildcard ranges for ALL access interfaces (dot1x settings), excluding INTERCO-ORANGE
+    const allGroups = this.groupConsecutive(interfaces.filter(iface => iface.isAccess && !this.shouldExcludeInterface(iface)));
     
     for (const group of allGroups) {
       for (const range of group.ranges) {

@@ -257,6 +257,7 @@ export class ConfigurationParser {
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} reauthentication 3600`);
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} supplicant-timeout 10`);
         configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} maximum-requests 3`);
+        configs.push(`wildcard range set protocols dot1x authenticator interface ${interfacePattern} mac-radius`);
         configs.push('');
       }
     }

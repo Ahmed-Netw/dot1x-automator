@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code } from 'lucide-react';
+import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
 import { FileUpload } from '@/components/FileUpload';
@@ -854,6 +854,28 @@ set vlans default vlan-id 1`;
                 >
                   Ping Switch ({switchIp || 'IP non saisie'})
                 </Button>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}" "C:\\Configurations"`;
+                    navigator.clipboard.writeText(command);
+                    toast({
+                      title: "Commande copiée",
+                      description: "La commande CLI a été copiée dans le presse-papier"
+                    });
+                  }}
+                  disabled={!rebondUsername || !rebondPassword || !switchIp || !switchUsername}
+                  className="w-full"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copier la commande CLI
+                </Button>
+                
+                <p className="text-xs text-muted-foreground">
+                  💡 <strong>Prérequis:</strong> sshpass doit être installé sur le serveur Rebond
+                </p>
               </div>
 
               

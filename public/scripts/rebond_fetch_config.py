@@ -36,6 +36,72 @@ def install_paramiko():
             print(f"❌ Erreur lors de l'installation de paramiko: {e}")
             return False
 
+def print_help():
+    """Affiche l'aide du script"""
+    print("Script de récupération de configuration Juniper via serveur Rebond")
+    print()
+    print("USAGE:")
+    print("    python rebond_fetch_config.py <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>")
+    print("    python rebond_fetch_config.py --help")
+    print("    python rebond_fetch_config.py          # Mode interactif")
+    print()
+    print("ARGUMENTS:")
+    print("    rebond_ip      IP du serveur Rebond (ex: 6.91.128.111)")
+    print("    rebond_user    Nom d'utilisateur Rebond")
+    print("    rebond_pass    Mot de passe Rebond")
+    print("    switch_ip      IP du switch Juniper cible")
+    print("    switch_user    Nom d'utilisateur du switch")
+    print("    switch_pass    Mot de passe du switch")
+    print("    output_dir     Dossier de sauvegarde (sera créé si inexistant)")
+    print()
+    print("PRÉREQUIS:")
+    print("    • Python 3 avec paramiko (installé automatiquement)")
+    print("    • sshpass installé sur le serveur Rebond")
+    print("    • Connectivité réseau Rebond → Switch")
+    print()
+    print("EXEMPLE:")
+    print('    python rebond_fetch_config.py 6.91.128.111 rebond_user "mon_pass" 192.168.1.10 admin "sw_pass" "C:\\Configurations"')
+
+def get_interactive_input():
+    """Collecte les paramètres en mode interactif"""
+    import getpass
+    
+    print("Saisissez les informations de connexion:")
+    print()
+    
+    # Serveur Rebond
+    rebond_ip = input(f"IP du serveur Rebond [6.91.128.111]: ").strip() or "6.91.128.111"
+    rebond_user = input("Utilisateur Rebond: ").strip()
+    rebond_pass = getpass.getpass("Mot de passe Rebond: ")
+    
+    print()
+    
+    # Switch cible
+    switch_ip = input("IP du switch Juniper: ").strip()
+    switch_user = input("Utilisateur switch: ").strip()
+    switch_pass = getpass.getpass("Mot de passe switch: ")
+    
+    print()
+    
+    # Dossier de sortie
+    import os
+    default_output = os.path.join(os.path.expanduser("~"), "Desktop", "Configurations")
+    output_dir = input(f"Dossier de sauvegarde [{default_output}]: ").strip() or default_output
+    
+    print()
+    print("📋 Récapitulatif:")
+    print(f"   Rebond: {rebond_user}@{rebond_ip}")
+    print(f"   Switch: {switch_user}@{switch_ip}")
+    print(f"   Sortie: {output_dir}")
+    print()
+    
+    confirm = input("Continuer? [O/n]: ").strip().lower()
+    if confirm and confirm not in ['o', 'oui', 'y', 'yes']:
+        print("❌ Opération annulée")
+        sys.exit(0)
+    
+    return rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass, output_dir
+
 def extract_hostname(config_text):
     """Extrait le hostname de la configuration"""
     patterns = [
@@ -174,21 +240,34 @@ def main():
     print("🚀 Script de récupération de configuration Juniper via Rebond")
     print("=" * 60)
     
-    # Vérifier les arguments
-    if len(sys.argv) != 8:
+    # Vérifier les arguments ou --help
+    if len(sys.argv) == 2 and sys.argv[1] in ['-h', '--help']:
+        print_help()
+        sys.exit(0)
+    
+    # Mode interactif si aucun argument
+    if len(sys.argv) == 1:
+        print("📝 Mode interactif - Saisie des paramètres:")
+        print()
+        rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass, output_dir = get_interactive_input()
+    elif len(sys.argv) != 8:
         print("❌ Usage incorrect!")
         print(f"Usage: {sys.argv[0]} <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>")
+        print(f"   ou: {sys.argv[0]} --help")
         print("\nExemple:")
         print(f"python {sys.argv[0]} 6.91.128.111 rebond_user rebond_pass 192.168.1.10 switch_user switch_pass \"C:\\Configurations\"")
+        print("\nOu lancez sans arguments pour le mode interactif:")
+        print(f"python {sys.argv[0]}")
         sys.exit(1)
+    else:
+        rebond_ip = sys.argv[1]
+        rebond_user = sys.argv[2] 
+        rebond_pass = sys.argv[3]
+        switch_ip = sys.argv[4]
+        switch_user = sys.argv[5]
+        switch_pass = sys.argv[6]
+        output_dir = sys.argv[7]
     
-    rebond_ip = sys.argv[1]
-    rebond_user = sys.argv[2] 
-    rebond_pass = sys.argv[3]
-    switch_ip = sys.argv[4]
-    switch_user = sys.argv[5]
-    switch_pass = sys.argv[6]
-    output_dir = sys.argv[7]
     
     try:
         # Installer paramiko si nécessaire

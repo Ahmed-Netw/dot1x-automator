@@ -11,12 +11,17 @@ npm install
 # 2. Installer Tauri CLI v1 (si pas déjà fait)
 cargo install tauri-cli --version ^1.5
 
-# 3. Construire l'application
+# 3. Construire l'exécutable portable
 npm run build
 
-# 4. Lancer l'exécutable
+# 4. Lancer l'exécutable portable (aucune installation requise)
 .\src-tauri\target\release\dot1x-automator.exe
 ```
+
+**L'exécutable portable sera créé dans :** `src-tauri\target\release\`
+**Nom du fichier :** `dot1x-automator.exe`
+
+✅ **Aucune installation requise** - Copiez simplement le `.exe` sur n'importe quel PC Windows et lancez-le directement!
 
 ## Prérequis Détaillés
 

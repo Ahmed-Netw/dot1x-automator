@@ -584,6 +584,145 @@ set vlans default vlan-id 1`;
         <DesktopCompiler isDesktopApp={isDesktopApp} />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {/* Script externe */}
+          <Card className="h-full flex flex-col">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5 text-accent-foreground" />
+                Script externe
+              </CardTitle>
+              <CardDescription>
+                Télécharger le script Python et gérer les fichiers de configuration
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-4">
+              {/* Téléchargement du script */}
+              <div className="space-y-2">
+                <Label>Script Python</Label>
+                <Button
+                  variant="outline"
+                  onClick={downloadPythonScript}
+                  className="w-full justify-start gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Télécharger robont_fetch_config.py
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Usage: python robont_fetch_config.py robont_ip robont_user robont_pass switch_ip switch_user switch_pass output_dir
+                </p>
+              </div>
+
+              {/* Configuration du dossier de sortie */}
+              <div className="space-y-2">
+                <Label htmlFor="config-path">Dossier des configurations .txt</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="config-path"
+                    value={scriptConfigPath}
+                    onChange={(e) => setScriptConfigPath(e.target.value)}
+                    placeholder="C:\Configurations"
+                  />
+                  {isDesktopApp && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={browseFolderForConfigs}
+                      title="Parcourir..."
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Lister les fichiers .txt */}
+              <Button
+                variant="outline"
+                onClick={listTxtFiles}
+                disabled={isLoadingConfigs}
+                className="w-full justify-start gap-2"
+              >
+                {isLoadingConfigs ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                {isLoadingConfigs ? "Chargement..." : "Lister les fichiers .txt"}
+              </Button>
+
+              {/* Sélection de fichier */}
+              {availableConfigs.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Fichiers de configuration disponibles</Label>
+                  <Select value={selectedConfigFile} onValueChange={loadConfigFile}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un fichier .txt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableConfigs.map((file, index) => (
+                        <SelectItem key={index} value={file}>
+                          {file}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Import manuel en mode web */}
+              {!isDesktopApp && (
+                <div className="space-y-2">
+                  <Label>Ou importer un fichier .txt manuellement</Label>
+                  <FileUpload onFileRead={handleFileUpload} />
+                </div>
+              )}
+
+              {/* Affichage du contenu du fichier sélectionné */}
+              {configFileContent && (
+                <div className="space-y-2">
+                  <Label>Contenu de {selectedConfigFile}</Label>
+                  <Textarea
+                    value={configFileContent}
+                    readOnly
+                    className="min-h-48 font-mono text-xs bg-muted/50"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(configFileContent);
+                        toast({
+                          title: "Copié !",
+                          description: "Configuration copiée dans le presse-papiers",
+                        });
+                      }}
+                    >
+                      Copier
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const blob = new Blob([configFileContent], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = selectedConfigFile || 'configuration.txt';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      Télécharger
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Formulaire de connexion */}
           <Card className="h-full flex flex-col">
             <CardHeader>
@@ -814,144 +953,6 @@ set vlans default vlan-id 1`;
             </CardContent>
           </Card>
 
-          {/* Script externe */}
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5 text-accent-foreground" />
-                Script externe
-              </CardTitle>
-              <CardDescription>
-                Télécharger le script Python et gérer les fichiers de configuration
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 space-y-4">
-              {/* Téléchargement du script */}
-              <div className="space-y-2">
-                <Label>Script Python</Label>
-                <Button
-                  variant="outline"
-                  onClick={downloadPythonScript}
-                  className="w-full justify-start gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Télécharger robont_fetch_config.py
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Usage: python robont_fetch_config.py robont_ip robont_user robont_pass switch_ip switch_user switch_pass output_dir
-                </p>
-              </div>
-
-              {/* Configuration du dossier de sortie */}
-              <div className="space-y-2">
-                <Label htmlFor="config-path">Dossier des configurations .txt</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="config-path"
-                    value={scriptConfigPath}
-                    onChange={(e) => setScriptConfigPath(e.target.value)}
-                    placeholder="C:\Configurations"
-                  />
-                  {isDesktopApp && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={browseFolderForConfigs}
-                      title="Parcourir..."
-                    >
-                      <FolderOpen className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Lister les fichiers .txt */}
-              <Button
-                variant="outline"
-                onClick={listTxtFiles}
-                disabled={isLoadingConfigs}
-                className="w-full justify-start gap-2"
-              >
-                {isLoadingConfigs ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4" />
-                )}
-                {isLoadingConfigs ? "Chargement..." : "Lister les fichiers .txt"}
-              </Button>
-
-              {/* Sélection de fichier */}
-              {availableConfigs.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Fichiers de configuration disponibles</Label>
-                  <Select value={selectedConfigFile} onValueChange={loadConfigFile}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un fichier .txt" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableConfigs.map((file, index) => (
-                        <SelectItem key={index} value={file}>
-                          {file}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Import manuel en mode web */}
-              {!isDesktopApp && (
-                <div className="space-y-2">
-                  <Label>Ou importer un fichier .txt manuellement</Label>
-                  <FileUpload onFileRead={handleFileUpload} />
-                </div>
-              )}
-
-              {/* Affichage du contenu du fichier sélectionné */}
-              {configFileContent && (
-                <div className="space-y-2">
-                  <Label>Contenu de {selectedConfigFile}</Label>
-                  <Textarea
-                    value={configFileContent}
-                    readOnly
-                    className="min-h-48 font-mono text-xs bg-muted/50"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        navigator.clipboard.writeText(configFileContent);
-                        toast({
-                          title: "Copié !",
-                          description: "Configuration copiée dans le presse-papiers",
-                        });
-                      }}
-                    >
-                      Copier
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const blob = new Blob([configFileContent], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = selectedConfigFile || 'configuration.txt';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                      }}
-                    >
-                      Télécharger
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

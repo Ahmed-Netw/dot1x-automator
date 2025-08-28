@@ -83,12 +83,9 @@ def get_interactive_input():
     
     print()
     
-    # Dossier de sortie
-    import os
-    default_output = os.path.join(os.path.expanduser("~"), "Desktop", "Configurations")
-    output_dir = input(f"Dossier de sauvegarde [{default_output}]: ").strip() or default_output
+    # Le fichier sera sauvegardé dans le répertoire du script
+    output_dir = os.path.dirname(os.path.abspath(__file__))
     
-    print()
     print("📋 Récapitulatif:")
     print(f"   Rebond: {rebond_user}@{rebond_ip}")
     print(f"   Switch: {switch_user}@{switch_ip}")
@@ -123,7 +120,6 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
     """Connexion via serveur Rebond vers switch"""
     try:
         import paramiko
-        import time
         
         print(f"🔗 Connexion au serveur Rebond {rebond_ip}...")
         
@@ -140,115 +136,61 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         )
         
         print(f"✅ Connecté au serveur Rebond")
-        print(f"🔗 Connexion SSH vers le switch {switch_ip}...")
+        print(f"🔗 Exécution de la commande via SSH vers le switch {switch_ip}...")
         
-        # Commande SSH pour se connecter au switch via Rebond
-        ssh_command = f"sshpass -p '{switch_pass}' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {switch_user}@{switch_ip}"
+        # Commande complète pour exécuter directement dans le CLI Juniper
+        # Note: Les lignes 'set' sont le FORMAT de sortie de la commande, pas des commandes exécutées
+        full_command = f"sshpass -p '{switch_pass}' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'"
         
-        # Ouverture d'un canal pour l'interaction
-        channel = rebond_client.invoke_shell()
-        channel.settimeout(60)
-        
-        # Fonction pour lire la sortie du canal
-        def read_until_prompt(channel, timeout=30):
-            output = ""
-            start_time = time.time()
-            while time.time() - start_time < timeout:
-                if channel.recv_ready():
-                    data = channel.recv(4096).decode('utf-8', errors='ignore')
-                    output += data
-                    # Vérifier si on a un prompt
-                    if output.strip().endswith('$ ') or output.strip().endswith('> ') or output.strip().endswith('# '):
-                        break
-                time.sleep(0.1)
-            return output
-        
-        # Attendre le prompt du Rebond
-        initial_output = read_until_prompt(channel, 5)
-        print("🔍 Prompt Rebond détecté")
-        
-        # Envoyer la commande de connexion SSH au switch
-        channel.send(ssh_command + '\n')
-        ssh_output = read_until_prompt(channel, 10)
-        
-        # Vérifier si la connexion SSH a réussi
-        if "permission denied" in ssh_output.lower() or "authentication failed" in ssh_output.lower():
-            raise Exception("Échec de l'authentification SSH vers le switch")
-        
-        print("✅ Connecté au switch Juniper")
-        
-        # Envoyer la commande pour récupérer la configuration
         print("📋 Exécution de: show configuration | display set | no-more")
-        channel.send("show configuration | display set | no-more\n")
+        print("ℹ️  Note: Les lignes 'set' sont le format d'affichage de Junos, pas des commandes exécutées")
         
-        # Attendre plus longtemps pour la récupération de la configuration (peut être volumineuse)
-        time.sleep(2)
-        config_output = ""
+        # Exécuter la commande directement
+        stdin, stdout, stderr = rebond_client.exec_command(full_command, timeout=60)
         
-        # Lire la sortie de la configuration avec un timeout plus long
-        start_time = time.time()
-        while time.time() - start_time < 45:  # Timeout de 45 secondes
-            if channel.recv_ready():
-                data = channel.recv(8192).decode('utf-8', errors='ignore')
-                config_output += data
-                
-                # Vérifier si on a fini de recevoir la configuration
-                lines = config_output.split('\n')
-                if len(lines) > 5:  # Au moins quelques lignes
-                    last_lines = lines[-5:]
-                    # Chercher un prompt à la fin
-                    for line in last_lines:
-                        if line.strip().endswith('> ') or line.strip().endswith('$ ') or line.strip().endswith('# '):
-                            break
-                    else:
-                        time.sleep(0.2)
-                        continue
-                    break
-            time.sleep(0.1)
+        # Lire la sortie
+        config_output = stdout.read().decode('utf-8', errors='ignore')
+        error_output = stderr.read().decode('utf-8', errors='ignore')
         
-        # Fermer les connexions
-        channel.close()
+        # Fermer la connexion
         rebond_client.close()
         
         print(f"✅ Configuration récupérée depuis {switch_ip}")
         print(f"📊 Taille de la sortie: {len(config_output)} caractères")
         
+        # Vérifier s'il y a des erreurs
+        if error_output and "warning" not in error_output.lower():
+            print(f"⚠️  Erreurs détectées: {error_output}")
+        
         # Analyser et nettoyer la sortie
-        lines = config_output.split('\n')
+        lines = config_output.strip().split('\n')
         config_lines = []
-        in_config = False
         
         for line in lines:
             stripped_line = line.strip()
-            
-            # Détecter le début de la configuration
-            if 'show configuration' in line.lower() and 'display set' in line.lower():
-                in_config = True
-                continue
-                
-            # Arrêter si on trouve un prompt après avoir commencé
-            if in_config and (stripped_line.endswith('> ') or stripped_line.endswith('$ ') or stripped_line.endswith('# ')):
-                break
-                
-            # Capturer les lignes set
-            if in_config and stripped_line.startswith('set '):
+            # Capturer toutes les lignes qui commencent par 'set '
+            if stripped_line.startswith('set ') and len(stripped_line) > 10:
                 config_lines.append(stripped_line)
-        
-        # Si pas de lignes trouvées avec la méthode stricte, essayer une approche plus permissive
-        if not config_lines:
-            print("🔍 Recherche alternative des lignes de configuration...")
-            for line in lines:
-                stripped_line = line.strip()
-                if stripped_line.startswith('set ') and len(stripped_line) > 10:
-                    config_lines.append(stripped_line)
         
         if not config_lines:
             # Sauvegarder la sortie brute pour débogage
-            debug_file = "debug_output.txt"
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            debug_file = os.path.join(script_dir, "debug_output.txt")
             with open(debug_file, 'w', encoding='utf-8') as f:
                 f.write("=== SORTIE BRUTE ===\n")
                 f.write(config_output)
+                f.write("\n=== ERREURS ===\n")
+                f.write(error_output)
             print(f"🐛 Sortie brute sauvegardée dans {debug_file} pour débogage")
+            
+            # Message d'aide plus clair
+            print("❌ Aucune ligne de configuration 'set' trouvée.")
+            print("💡 Ceci peut indiquer que:")
+            print("   • La commande a été exécutée dans le shell FreeBSD au lieu du CLI Junos")
+            print("   • Le switch n'est pas un équipement Juniper")
+            print("   • Il y a un problème d'authentification ou de connectivité")
+            print(f"   • Vérifiez le fichier debug_output.txt pour plus de détails")
+            
             raise Exception("Aucune ligne de configuration 'set' trouvée dans la sortie")
         
         print(f"📋 {len(config_lines)} lignes de configuration extraites")
@@ -260,18 +202,17 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
 def save_configuration(config_text, switch_ip, output_dir):
     """Sauvegarde la configuration dans un fichier .txt"""
     try:
-        # Créer le dossier de sortie s'il n'existe pas
+        # Le dossier de sortie est toujours le répertoire du script
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         
         # Extraire le hostname
         hostname = extract_hostname(config_text)
         
-        # Générer le nom de fichier
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Générer le nom de fichier (sans timestamp, juste le nom du switch)
         if hostname:
-            filename = f"{hostname}_{timestamp}.txt"
+            filename = f"{hostname}.txt"
         else:
-            filename = f"switch_{switch_ip.replace('.', '_')}_{timestamp}.txt"
+            filename = f"switch_{switch_ip.replace('.', '_')}.txt"
         
         filepath = os.path.join(output_dir, filename)
         
@@ -285,7 +226,7 @@ def save_configuration(config_text, switch_ip, output_dir):
 
 """
         
-        # Écrire le fichier
+        # Écrire le fichier (remplace le fichier existant s'il y en a un)
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(header + config_text)
         
@@ -310,12 +251,13 @@ def main():
         print("📝 Mode interactif - Saisie des paramètres:")
         print()
         rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass, output_dir = get_interactive_input()
-    elif len(sys.argv) != 8:
+    elif len(sys.argv) != 7:
         print("❌ Usage incorrect!")
-        print(f"Usage: {sys.argv[0]} <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>")
+        print(f"Usage: {sys.argv[0]} <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass>")
         print(f"   ou: {sys.argv[0]} --help")
         print("\nExemple:")
-        print(f"python {sys.argv[0]} 6.91.128.111 rebond_user rebond_pass 192.168.1.10 switch_user switch_pass \"C:\\Configurations\"")
+        print(f"python {sys.argv[0]} 6.91.128.111 rebond_user rebond_pass 192.168.1.10 switch_user switch_pass")
+        print("Note: Le fichier sera sauvegardé dans le répertoire du script sous le nom <hostname>.txt")
         print("\nOu lancez sans arguments pour le mode interactif:")
         print(f"python {sys.argv[0]}")
         sys.exit(1)
@@ -326,7 +268,7 @@ def main():
         switch_ip = sys.argv[4]
         switch_user = sys.argv[5]
         switch_pass = sys.argv[6]
-        output_dir = sys.argv[7]
+        output_dir = os.path.dirname(os.path.abspath(__file__))
     
     
     try:

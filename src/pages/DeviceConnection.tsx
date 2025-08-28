@@ -283,15 +283,15 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     try {
       // Essayer d'utiliser Tauri si disponible, sinon mode simulation
       if (tauriInvoke) {
-        const result = await tauriInvoke('connect_to_device', {
-          credentials: {
-            rebond_ip: rebondServerIp,
-            rebond_username: rebondUsername,
-            rebond_password: rebondPassword,
-            switch_ip: switchIp,
-            switch_username: switchUsername,
-            switch_password: switchPassword,
-          }
+        setConnectionStep("📦 Préparation du script Python...");
+        
+        const result = await tauriInvoke('run_rebond_script', {
+          rebond_ip: rebondServerIp,
+          rebond_username: rebondUsername,
+          rebond_password: rebondPassword,
+          switch_ip: switchIp,
+          switch_username: switchUsername,
+          switch_password: switchPassword,
         }) as { success: boolean; message: string; configuration?: string; hostname?: string };
 
         if (result.success && result.configuration) {
@@ -859,11 +859,11 @@ set vlans default vlan-id 1`;
                   variant="outline" 
                   size="sm"
                   onClick={() => {
-                    const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}" "C:\\Configurations"`;
+                    const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;
                     navigator.clipboard.writeText(command);
                     toast({
                       title: "Commande copiée",
-                      description: "La commande CLI a été copiée dans le presse-papier"
+                      description: "La commande CLI a été copiée dans le presse-papier (le fichier sera sauvé dans le répertoire du script)"
                     });
                   }}
                   disabled={!rebondUsername || !rebondPassword || !switchIp || !switchUsername}

@@ -564,7 +564,7 @@ set vlans default vlan-id 1`;
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <header className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-primary">Connexion SSH aux Équipements</h1>
           <p className="text-muted-foreground">
@@ -583,9 +583,9 @@ set vlans default vlan-id 1`;
 
         <DesktopCompiler isDesktopApp={isDesktopApp} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Formulaire de connexion */}
-          <Card>
+          <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Network className="h-5 w-5 text-primary" />
@@ -595,7 +595,7 @@ set vlans default vlan-id 1`;
                 Connexion SSH : Serveur Robont (6.91.128.111) → Switch cible
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="flex-1 space-y-6">
               {/* Section Serveur Robont */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-secondary-foreground">
@@ -766,7 +766,7 @@ set vlans default vlan-id 1`;
           </Card>
 
           {/* Affichage de la configuration */}
-          <Card>
+          <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Terminal className="h-5 w-5 text-secondary-foreground" />
@@ -776,7 +776,7 @@ set vlans default vlan-id 1`;
                 Résultat de "show configuration | display set | no-more"
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               {configuration ? (
                 <div className="space-y-4">
                   <Textarea
@@ -815,7 +815,7 @@ set vlans default vlan-id 1`;
           </Card>
 
           {/* Script externe */}
-          <Card>
+          <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Code className="h-5 w-5 text-accent-foreground" />
@@ -825,7 +825,7 @@ set vlans default vlan-id 1`;
                 Télécharger le script Python et gérer les fichiers de configuration
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex-1 space-y-4">
               {/* Téléchargement du script */}
               <div className="space-y-2">
                 <Label>Script Python</Label>

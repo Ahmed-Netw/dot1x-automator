@@ -26,10 +26,10 @@ interface ConnectionStatus {
 }
 
 export default function DeviceConnection() {
-  // Serveur robont (IP fixe selon le script)
-  const [robontServerIp] = useState('6.91.128.111');
-  const [robontUsername, setRobontUsername] = useState('');
-  const [robontPassword, setRobontPassword] = useState('');
+  // Serveur rebond (IP fixe selon le script)
+  const [rebondServerIp] = useState('6.91.128.111');
+  const [rebondUsername, setRebondUsername] = useState('');
+  const [rebondPassword, setRebondPassword] = useState('');
   
   // Switch cible
   const [switchIp, setSwitchIp] = useState('');
@@ -77,7 +77,7 @@ export default function DeviceConnection() {
     const hostname = `SW-${switchIp.replace(/\./g, '-')}`;
     
     return `# Configuration récupérée le ${timestamp}
-# Serveur Robont: ${robontServerIp}
+# Serveur Rebond: ${rebondServerIp}
 # Switch IP: ${switchIp}
 # Switch Hostname: ${hostname}
 # Commande: show configuration | display set | no-more
@@ -176,8 +176,8 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 # Timestamp de fin: ${new Date().toLocaleString('fr-FR')}`;
   };
 
-  const handlePing = async (target: 'robont' | 'switch') => {
-    const ip = target === 'robont' ? robontServerIp : switchIp;
+  const handlePing = async (target: 'rebond' | 'switch') => {
+    const ip = target === 'rebond' ? rebondServerIp : switchIp;
     
     if (!ip) {
       toast({
@@ -214,11 +214,11 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     }
   };
 
-  const handleTestRobont = async () => {
-    if (!robontUsername || !robontPassword) {
+  const handleTestRebond = async () => {
+    if (!rebondUsername || !rebondPassword) {
       toast({
         title: "Champs manquants",
-        description: "Veuillez saisir les identifiants du serveur Robont",
+        description: "Veuillez saisir les identifiants du serveur Rebond",
         variant: "destructive"
       });
       return;
@@ -226,10 +226,10 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     try {
       if (tauriInvoke) {
-        const result = await tauriInvoke('test_robont_connection', {
-          ip: robontServerIp,
-          username: robontUsername,
-          password: robontPassword
+        const result = await tauriInvoke('test_rebond_connection', {
+          ip: rebondServerIp,
+          username: rebondUsername,
+          password: rebondPassword
         }) as string;
         
         toast({
@@ -239,7 +239,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       } else {
         toast({
           title: "Mode simulation",
-          description: "Test de connexion Robont - utilisez l'app desktop pour un vrai test",
+          description: "Test de connexion Rebond - utilisez l'app desktop pour un vrai test",
         });
       }
     } catch (error: any) {
@@ -255,7 +255,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     // Validation IP basique
     const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
     
-    if (!robontUsername || !robontPassword || !switchIp || !switchUsername) {
+    if (!rebondUsername || !rebondPassword || !switchIp || !switchUsername) {
       toast({
         title: "Erreur de saisie",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -275,16 +275,16 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     setIsConnecting(true);
     setConnectionStatus({ isConnected: false });
-    setConnectionStep(`Connexion au serveur Robont ${robontServerIp}...`);
+    setConnectionStep(`Connexion au serveur Rebond ${rebondServerIp}...`);
 
     try {
       // Essayer d'utiliser Tauri si disponible, sinon mode simulation
       if (tauriInvoke) {
         const result = await tauriInvoke('connect_to_device', {
           credentials: {
-            robont_ip: robontServerIp,
-            robont_username: robontUsername,
-            robont_password: robontPassword,
+            rebond_ip: rebondServerIp,
+            rebond_username: rebondUsername,
+            rebond_password: rebondPassword,
             switch_ip: switchIp,
             switch_username: switchUsername,
             switch_password: switchPassword,
@@ -306,7 +306,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
         }
       } else {
         // Mode simulation pour le navigateur web
-        setConnectionStep("✓ Connexion établie avec le serveur Robont");
+        setConnectionStep("✓ Connexion établie avec le serveur Rebond");
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         setConnectionStep(`Connexion SSH au switch ${switchIp}...`);
@@ -356,7 +356,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     setConnectionStep('');
     toast({
       title: "Déconnecté",
-      description: "Sessions fermées (serveur Robont et switch)",
+      description: "Sessions fermées (serveur Rebond et switch)",
     });
   };
 
@@ -385,14 +385,14 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     const scriptContent = `#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Script de récupération de configuration via serveur Robont
+Script de récupération de configuration via serveur Rebond
 Téléchargé depuis l'application Network Management Tools
 """
-# Le contenu complet du script est disponible dans public/scripts/robont_fetch_config.py
+# Le contenu complet du script est disponible dans public/scripts/rebond_fetch_config.py
 `;
 
     // Télécharger le script depuis le dossier public
-    fetch('/scripts/robont_fetch_config.py')
+    fetch('/scripts/rebond_fetch_config.py')
       .then(response => {
         if (!response.ok) {
           throw new Error('Script non trouvé');
@@ -404,7 +404,7 @@ Téléchargé depuis l'application Network Management Tools
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'robont_fetch_config.py';
+        a.download = 'rebond_fetch_config.py';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -412,7 +412,7 @@ Téléchargé depuis l'application Network Management Tools
 
         toast({
           title: "Script téléchargé",
-          description: "robont_fetch_config.py sauvegardé sur votre ordinateur",
+          description: "rebond_fetch_config.py sauvegardé sur votre ordinateur",
         });
       })
       .catch(error => {
@@ -568,7 +568,7 @@ set vlans default vlan-id 1`;
         <header className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-primary">Connexion SSH aux Équipements</h1>
           <p className="text-muted-foreground">
-            Connexion via serveur Robont (6.91.128.111) vers switches réseau
+            Connexion via serveur Rebond (6.91.128.111) vers switches réseau
           </p>
         </header>
 
@@ -576,7 +576,7 @@ set vlans default vlan-id 1`;
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             <strong>Mode:</strong> {isDesktopApp ? 'Application Desktop Native - SSH Réel' : 'Application Web - Mode Simulation'}<br/>
-            <strong>Architecture:</strong> Serveur Robont (6.91.128.111) → Switch cible<br/>
+            <strong>Architecture:</strong> Serveur Rebond (6.91.128.111) → Switch cible<br/>
             <strong>Commande exécutée:</strong> show configuration | display set | no-more
           </AlertDescription>
         </Alert>
@@ -605,10 +605,10 @@ set vlans default vlan-id 1`;
                   className="w-full justify-start gap-2"
                 >
                   <Download className="h-4 w-4" />
-                  Télécharger robont_fetch_config.py
+                  Télécharger rebond_fetch_config.py
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Usage: python robont_fetch_config.py robont_ip robont_user robont_pass switch_ip switch_user switch_pass output_dir
+                  Usage: python rebond_fetch_config.py rebond_ip rebond_user rebond_pass switch_ip switch_user switch_pass output_dir
                 </p>
               </div>
 
@@ -728,10 +728,10 @@ set vlans default vlan-id 1`;
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Network className="h-5 w-5 text-primary" />
-                Connexion via Serveur Robont
+                Connexion via Serveur Rebond
               </CardTitle>
               <CardDescription>
-                Connexion SSH : Serveur Robont (6.91.128.111) → Switch cible
+                Connexion SSH : Serveur Rebond (6.91.128.111) → Switch cible
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-6">
@@ -739,39 +739,39 @@ set vlans default vlan-id 1`;
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-secondary-foreground">
                   <div className="w-2 h-2 rounded-full bg-secondary-foreground"></div>
-                  Serveur Robont (IP fixe)
+                  Serveur Rebond (IP fixe)
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="robont-ip">Adresse IP</Label>
+                    <Label htmlFor="rebond-ip">Adresse IP</Label>
                     <Input
-                      id="robont-ip"
-                      value={robontServerIp}
+                      id="rebond-ip"
+                      value={rebondServerIp}
                       disabled
                       className="bg-muted"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="robont-username">Utilisateur *</Label>
+                    <Label htmlFor="rebond-username">Utilisateur *</Label>
                     <Input
-                      id="robont-username"
+                      id="rebond-username"
                       placeholder="Nom d'utilisateur serveur"
-                      value={robontUsername}
-                      onChange={(e) => setRobontUsername(e.target.value)}
+                      value={rebondUsername}
+                      onChange={(e) => setRebondUsername(e.target.value)}
                       disabled={connectionStatus.isConnected}
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="robont-password">Mot de passe *</Label>
+                    <Label htmlFor="rebond-password">Mot de passe *</Label>
                     <Input
-                      id="robont-password"
+                      id="rebond-password"
                       type="password"
-                      placeholder="Mot de passe serveur Robont"
-                      value={robontPassword}
-                      onChange={(e) => setRobontPassword(e.target.value)}
+                      placeholder="Mot de passe serveur Rebond"
+                      value={rebondPassword}
+                      onChange={(e) => setRebondPassword(e.target.value)}
                       disabled={connectionStatus.isConnected}
                     />
                   </div>
@@ -828,15 +828,15 @@ set vlans default vlan-id 1`;
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => handlePing('robont')}
+                    onClick={() => handlePing('rebond')}
                     className="flex-1"
                   >
-                    Ping Robont
+                    Ping Rebond
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={handleTestRobont}
+                    onClick={handleTestRebond}
                     className="flex-1"
                   >
                     Test Connexion
@@ -857,7 +857,7 @@ set vlans default vlan-id 1`;
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  Connexion SSH sécurisée via serveur Robont → show configuration | display set | no-more
+                  Connexion SSH sécurisée via serveur Rebond → show configuration | display set | no-more
                 </span>
               </div>
               {isConnecting && connectionStep && (
@@ -889,7 +889,7 @@ set vlans default vlan-id 1`;
               {connectionStatus.isConnected && (
                 <div className="space-y-2">
                   <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                    Robont: {robontServerIp}
+                    Rebond: {rebondServerIp}
                   </Badge>
                   <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
                     Switch: {switchIp}

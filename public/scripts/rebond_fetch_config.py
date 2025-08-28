@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Script de récupération de configuration via serveur Robont
+Script de récupération de configuration via serveur Rebond
 Auteur: Équipe Network Tools
 Version: 1.0
 Date: 2024
 
 Usage:
-    python robont_fetch_config.py <robont_ip> <robont_user> <robont_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>
+    python rebond_fetch_config.py <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>
 
 Exemple:
-    python robont_fetch_config.py 6.91.128.111 robont_user robont_pass 192.168.1.10 switch_user switch_pass "C:\\Configurations"
+    python rebond_fetch_config.py 6.91.128.111 rebond_user rebond_pass 192.168.1.10 switch_user switch_pass "C:\\Configurations"
 """
 
 import sys
@@ -53,35 +53,35 @@ def extract_hostname(config_text):
     
     return None
 
-def connect_via_robont(robont_ip, robont_user, robont_pass, switch_ip, switch_user, switch_pass):
-    """Connexion via serveur Robont vers switch"""
+def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass):
+    """Connexion via serveur Rebond vers switch"""
     try:
         import paramiko
         
-        print(f"🔗 Connexion au serveur Robont {robont_ip}...")
+        print(f"🔗 Connexion au serveur Rebond {rebond_ip}...")
         
-        # Connexion SSH au serveur Robont
-        robont_client = paramiko.SSHClient()
-        robont_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        robont_client.connect(
-            hostname=robont_ip,
-            username=robont_user,
-            password=robont_pass,
+        # Connexion SSH au serveur Rebond
+        rebond_client = paramiko.SSHClient()
+        rebond_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        rebond_client.connect(
+            hostname=rebond_ip,
+            username=rebond_user,
+            password=rebond_pass,
             timeout=30,
             look_for_keys=False,
             allow_agent=False
         )
         
-        print(f"✅ Connecté au serveur Robont")
+        print(f"✅ Connecté au serveur Rebond")
         print(f"🔗 Connexion SSH vers le switch {switch_ip}...")
         
-        # Commande SSH pour se connecter au switch via Robont
+        # Commande SSH pour se connecter au switch via Rebond
         ssh_command = f"sshpass -p '{switch_pass}' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {switch_user}@{switch_ip}"
         
         # Ouverture d'un canal pour l'interaction
-        channel = robont_client.invoke_shell()
+        channel = rebond_client.invoke_shell()
         
-        # Attendre le prompt du Robont
+        # Attendre le prompt du Rebond
         import time
         time.sleep(2)
         
@@ -102,7 +102,7 @@ def connect_via_robont(robont_ip, robont_user, robont_pass, switch_ip, switch_us
         
         # Fermer les connexions
         channel.close()
-        robont_client.close()
+        rebond_client.close()
         
         print(f"✅ Configuration récupérée depuis {switch_ip}")
         
@@ -154,7 +154,7 @@ def save_configuration(config_text, switch_ip, output_dir):
 # Switch IP: {switch_ip}
 # Hostname: {hostname or 'Non détecté'}
 # Commande: show configuration | display set | no-more
-# Récupéré via serveur Robont
+# Récupéré via serveur Rebond
 #==================================================
 
 """
@@ -171,20 +171,20 @@ def save_configuration(config_text, switch_ip, output_dir):
 
 def main():
     """Fonction principale"""
-    print("🚀 Script de récupération de configuration Juniper via Robont")
+    print("🚀 Script de récupération de configuration Juniper via Rebond")
     print("=" * 60)
     
     # Vérifier les arguments
     if len(sys.argv) != 8:
         print("❌ Usage incorrect!")
-        print(f"Usage: {sys.argv[0]} <robont_ip> <robont_user> <robont_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>")
+        print(f"Usage: {sys.argv[0]} <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>")
         print("\nExemple:")
-        print(f"python {sys.argv[0]} 6.91.128.111 robont_user robont_pass 192.168.1.10 switch_user switch_pass \"C:\\Configurations\"")
+        print(f"python {sys.argv[0]} 6.91.128.111 rebond_user rebond_pass 192.168.1.10 switch_user switch_pass \"C:\\Configurations\"")
         sys.exit(1)
     
-    robont_ip = sys.argv[1]
-    robont_user = sys.argv[2] 
-    robont_pass = sys.argv[3]
+    rebond_ip = sys.argv[1]
+    rebond_user = sys.argv[2] 
+    rebond_pass = sys.argv[3]
     switch_ip = sys.argv[4]
     switch_user = sys.argv[5]
     switch_pass = sys.argv[6]
@@ -198,8 +198,8 @@ def main():
             sys.exit(1)
         
         # Se connecter et récupérer la configuration
-        print(f"🎯 Cible: {switch_ip} via Robont {robont_ip}")
-        config = connect_via_robont(robont_ip, robont_user, robont_pass, switch_ip, switch_user, switch_pass)
+        print(f"🎯 Cible: {switch_ip} via Rebond {rebond_ip}")
+        config = connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass)
         
         # Sauvegarder la configuration
         filepath = save_configuration(config, switch_ip, output_dir)

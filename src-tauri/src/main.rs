@@ -29,6 +29,7 @@ struct ConnectionResult {
     message: String,
     configuration: Option<String>,
     hostname: Option<String>,
+    execution_logs: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -141,6 +142,7 @@ async fn connect_to_device(credentials: ConnectionCredentials) -> Result<Connect
                         message: format!("Configuration récupérée avec succès du switch {}", hostname),
                         configuration: Some(output),
                         hostname: Some(hostname),
+                        execution_logs: None,
                     })
                 }
                 Ok(false) => {
@@ -201,6 +203,7 @@ async fn run_rebond_script(credentials: RebondCredentials) -> Result<ConnectionR
     };
     
     let mut last_error = String::new();
+    let mut execution_logs = String::new();
     
     for python_exe in python_executables {
         println!("Trying Python executable: {}", python_exe);
@@ -218,6 +221,14 @@ async fn run_rebond_script(credentials: RebondCredentials) -> Result<ConnectionR
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
+                
+                // Capture execution logs for debugging
+                execution_logs.push_str(&format!("=== Execution avec {} ===\n", python_exe));
+                execution_logs.push_str(&format!("STDOUT:\n{}\n", stdout));
+                if !stderr.is_empty() {
+                    execution_logs.push_str(&format!("STDERR:\n{}\n", stderr));
+                }
+                execution_logs.push_str(&format!("Exit Status: {}\n\n", output.status));
                 
                 println!("Python stdout: {}", stdout);
                 if !stderr.is_empty() {
@@ -257,6 +268,7 @@ async fn run_rebond_script(credentials: RebondCredentials) -> Result<ConnectionR
                                     message: format!("Configuration récupérée avec succès du switch {}", hostname),
                                     configuration: Some(config_content),
                                     hostname: Some(hostname),
+                                    execution_logs: Some(execution_logs),
                                 });
                             }
                             Err(e) => {
@@ -283,7 +295,11 @@ async fn run_rebond_script(credentials: RebondCredentials) -> Result<ConnectionR
     // Clean up temp script
     let _ = fs::remove_file(&script_path);
     
-    Err(format!("Failed to execute Python script. Tried all Python executables. Last error: {}", last_error))
+    Err(format!(
+        "Échec de l'exécution du script Python avec tous les exécutables Python disponibles.\n\nLogs d'exécution:\n{}\n\nDernière erreur: {}",
+        execution_logs,
+        last_error
+    ))
 }
 
 // Alias for test_robont_connection to maintain consistency

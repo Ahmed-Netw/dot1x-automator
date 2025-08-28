@@ -51,6 +51,7 @@ export default function DeviceConnection() {
   const [selectedConfigFile, setSelectedConfigFile] = useState<string>('');
   const [configFileContent, setConfigFileContent] = useState<string>('');
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
+  const [executionLogs, setExecutionLogs] = useState<string>('');
   
   const { toast } = useToast();
 
@@ -255,6 +256,16 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
   };
 
   const handleConnect = async () => {
+    // En mode web, empêcher la connexion réelle
+    if (!tauriInvoke) {
+      toast({
+        title: "Fonction Desktop uniquement",
+        description: "La récupération de configuration nécessite l'application desktop pour exécuter le script Python",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Validation IP basique
     const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
     
@@ -281,59 +292,31 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     setConnectionStep(`Connexion au serveur Rebond ${rebondServerIp}...`);
 
     try {
-      // Essayer d'utiliser Tauri si disponible, sinon mode simulation
-      if (tauriInvoke) {
-        setConnectionStep("📦 Préparation du script Python...");
-        
-        const result = await tauriInvoke('run_rebond_script', {
-          rebond_ip: rebondServerIp,
-          rebond_username: rebondUsername,
-          rebond_password: rebondPassword,
-          switch_ip: switchIp,
-          switch_username: switchUsername,
-          switch_password: switchPassword,
-        }) as { success: boolean; message: string; configuration?: string; hostname?: string };
+      setConnectionStep("📦 Préparation du script Python...");
+      
+      const result = await tauriInvoke('run_rebond_script', {
+        rebond_ip: rebondServerIp,
+        rebond_username: rebondUsername,
+        rebond_password: rebondPassword,
+        switch_ip: switchIp,
+        switch_username: switchUsername,
+        switch_password: switchPassword,
+      }) as { success: boolean; message: string; configuration?: string; hostname?: string; execution_logs?: string };
 
-        if (result.success && result.configuration) {
-          setConfiguration(result.configuration);
-          setExtractedHostname(result.hostname || 'Unknown');
-          setConnectionStep("✓ Configuration récupérée avec succès");
-          setConnectionStatus({ isConnected: true });
-          
-          toast({
-            title: "Connexion réussie",
-            description: `Configuration du switch ${result.hostname} récupérée`,
-          });
-        } else {
-          throw new Error(result.message || 'Connexion échouée');
-        }
-      } else {
-        // Mode simulation pour le navigateur web
-        setConnectionStep("✓ Connexion établie avec le serveur Rebond");
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        setConnectionStep(`Connexion SSH au switch ${switchIp}...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        setConnectionStep("✓ Connexion au switch réussie");
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        setConnectionStep("Exécution: show configuration | display set | no-more");
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Générer la configuration simulée
-        const mockConfig = generateMockConfiguration(switchIp);
-        const hostname = extractHostname(mockConfig);
-        
-        setConfiguration(mockConfig);
-        setExtractedHostname(hostname);
+      if (result.success && result.configuration) {
+        setConfiguration(result.configuration);
+        setExtractedHostname(result.hostname || 'Unknown');
+        setExecutionLogs(result.execution_logs || '');
         setConnectionStep("✓ Configuration récupérée avec succès");
         setConnectionStatus({ isConnected: true });
         
         toast({
-          title: "Connexion simulée réussie",
-          description: `Configuration du switch ${hostname} récupérée`,
+          title: "Connexion réussie",
+          description: `Configuration du switch ${result.hostname} récupérée`,
         });
+      } else {
+        setExecutionLogs(result.execution_logs || result.message || '');
+        throw new Error(result.message || 'Connexion échouée');
       }
     } catch (error: any) {
       setConnectionStep(`❌ ${error.message || 'Erreur de connexion'}`);
@@ -357,6 +340,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     setConfiguration('');
     setExtractedHostname('');
     setConnectionStep('');
+    setExecutionLogs('');
     toast({
       title: "Déconnecté",
       description: "Sessions fermées (serveur Rebond et switch)",
@@ -575,12 +559,22 @@ set vlans default vlan-id 1`;
           </p>
         </header>
 
-        <Alert>
+        {/* Alert d'information sur le mode */}
+        <Alert className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Mode:</strong> {isDesktopApp ? 'Application Desktop Native - SSH Réel' : 'Application Web - Mode Simulation'}<br/>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant={isDesktopApp ? "default" : "secondary"}>
+                {isDesktopApp ? '🖥️ Mode Desktop - SSH Réel' : '🌐 Mode Web - Simulation uniquement'}
+              </Badge>
+            </div>
             <strong>Architecture:</strong> Serveur Rebond (6.91.128.111) → Switch cible<br/>
             <strong>Commande exécutée:</strong> show configuration | display set | no-more
+            {!isDesktopApp && (
+              <>
+                <br/><strong>Note:</strong> Pour récupérer de vraies configurations, utilisez l'application desktop avec <code>cargo tauri dev</code>
+              </>
+            )}
           </AlertDescription>
         </Alert>
 
@@ -895,10 +889,11 @@ set vlans default vlan-id 1`;
                 {!connectionStatus.isConnected ? (
                   <Button 
                     onClick={handleConnect}
-                    disabled={isConnecting}
+                    disabled={isConnecting || !isDesktopApp}
                     className="flex-1"
                   >
-                    {isConnecting ? "Connexion en cours..." : "Se connecter"}
+                    {!isDesktopApp ? "Disponible uniquement en mode desktop" : 
+                     isConnecting ? "Connexion en cours..." : "Se connecter"}
                   </Button>
                 ) : (
                   <Button 
@@ -972,11 +967,47 @@ set vlans default vlan-id 1`;
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <Terminal className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Connectez-vous pour afficher la configuration</p>
+                  <p>{isDesktopApp ? "Connectez-vous pour afficher la configuration" : "Mode web - La configuration réelle n'est disponible qu'en mode desktop"}</p>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Logs d'exécution (mode desktop uniquement) */}
+          {isDesktopApp && executionLogs && (
+            <Card className="h-full flex flex-col">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Code className="h-5 w-5 text-accent-foreground" />
+                  Logs d'exécution Python
+                </CardTitle>
+                <CardDescription>
+                  Sortie détaillée du script rebond_fetch_config.py
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <Textarea
+                  value={executionLogs}
+                  readOnly
+                  className="min-h-64 font-mono text-xs bg-muted/50"
+                />
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    navigator.clipboard.writeText(executionLogs);
+                    toast({
+                      title: "Copié !",
+                      description: "Logs copiés dans le presse-papiers",
+                    });
+                  }}
+                >
+                  Copier les logs
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
         </div>
       </div>

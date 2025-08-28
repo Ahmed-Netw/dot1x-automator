@@ -123,6 +123,7 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
     """Connexion via serveur Rebond vers switch"""
     try:
         import paramiko
+        import time
         
         print(f"🔗 Connexion au serveur Rebond {rebond_ip}...")
         
@@ -146,24 +147,63 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         
         # Ouverture d'un canal pour l'interaction
         channel = rebond_client.invoke_shell()
+        channel.settimeout(60)
+        
+        # Fonction pour lire la sortie du canal
+        def read_until_prompt(channel, timeout=30):
+            output = ""
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                if channel.recv_ready():
+                    data = channel.recv(4096).decode('utf-8', errors='ignore')
+                    output += data
+                    # Vérifier si on a un prompt
+                    if output.strip().endswith('$ ') or output.strip().endswith('> ') or output.strip().endswith('# '):
+                        break
+                time.sleep(0.1)
+            return output
         
         # Attendre le prompt du Rebond
-        import time
-        time.sleep(2)
+        initial_output = read_until_prompt(channel, 5)
+        print("🔍 Prompt Rebond détecté")
         
-        # Envoyer la commande de connexion SSH
+        # Envoyer la commande de connexion SSH au switch
         channel.send(ssh_command + '\n')
-        time.sleep(3)
+        ssh_output = read_until_prompt(channel, 10)
         
-        # Envoyer la commande de configuration Juniper
-        juniper_command = "show configuration | display set | no-more\n"
-        channel.send(juniper_command)
-        time.sleep(5)
+        # Vérifier si la connexion SSH a réussi
+        if "permission denied" in ssh_output.lower() or "authentication failed" in ssh_output.lower():
+            raise Exception("Échec de l'authentification SSH vers le switch")
         
-        # Lire la réponse
-        output = ""
-        while channel.recv_ready():
-            output += channel.recv(4096).decode('utf-8', errors='ignore')
+        print("✅ Connecté au switch Juniper")
+        
+        # Envoyer la commande pour récupérer la configuration
+        print("📋 Exécution de: show configuration | display set | no-more")
+        channel.send("show configuration | display set | no-more\n")
+        
+        # Attendre plus longtemps pour la récupération de la configuration (peut être volumineuse)
+        time.sleep(2)
+        config_output = ""
+        
+        # Lire la sortie de la configuration avec un timeout plus long
+        start_time = time.time()
+        while time.time() - start_time < 45:  # Timeout de 45 secondes
+            if channel.recv_ready():
+                data = channel.recv(8192).decode('utf-8', errors='ignore')
+                config_output += data
+                
+                # Vérifier si on a fini de recevoir la configuration
+                lines = config_output.split('\n')
+                if len(lines) > 5:  # Au moins quelques lignes
+                    last_lines = lines[-5:]
+                    # Chercher un prompt à la fin
+                    for line in last_lines:
+                        if line.strip().endswith('> ') or line.strip().endswith('$ ') or line.strip().endswith('# '):
+                            break
+                    else:
+                        time.sleep(0.2)
+                        continue
+                    break
             time.sleep(0.1)
         
         # Fermer les connexions
@@ -171,27 +211,47 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         rebond_client.close()
         
         print(f"✅ Configuration récupérée depuis {switch_ip}")
+        print(f"📊 Taille de la sortie: {len(config_output)} caractères")
         
-        # Nettoyer la sortie
-        lines = output.split('\n')
+        # Analyser et nettoyer la sortie
+        lines = config_output.split('\n')
         config_lines = []
-        capture = False
+        in_config = False
         
         for line in lines:
-            # Commencer à capturer après la commande
-            if 'show configuration' in line.lower():
-                capture = True
+            stripped_line = line.strip()
+            
+            # Détecter le début de la configuration
+            if 'show configuration' in line.lower() and 'display set' in line.lower():
+                in_config = True
                 continue
-            # Arrêter si on trouve un nouveau prompt
-            if capture and (line.strip().endswith('> ') or line.strip().endswith('$ ') or line.strip().endswith('# ')):
+                
+            # Arrêter si on trouve un prompt après avoir commencé
+            if in_config and (stripped_line.endswith('> ') or stripped_line.endswith('$ ') or stripped_line.endswith('# ')):
                 break
+                
             # Capturer les lignes set
-            if capture and line.strip().startswith('set '):
-                config_lines.append(line.strip())
+            if in_config and stripped_line.startswith('set '):
+                config_lines.append(stripped_line)
+        
+        # Si pas de lignes trouvées avec la méthode stricte, essayer une approche plus permissive
+        if not config_lines:
+            print("🔍 Recherche alternative des lignes de configuration...")
+            for line in lines:
+                stripped_line = line.strip()
+                if stripped_line.startswith('set ') and len(stripped_line) > 10:
+                    config_lines.append(stripped_line)
         
         if not config_lines:
+            # Sauvegarder la sortie brute pour débogage
+            debug_file = "debug_output.txt"
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                f.write("=== SORTIE BRUTE ===\n")
+                f.write(config_output)
+            print(f"🐛 Sortie brute sauvegardée dans {debug_file} pour débogage")
             raise Exception("Aucune ligne de configuration 'set' trouvée dans la sortie")
         
+        print(f"📋 {len(config_lines)} lignes de configuration extraites")
         return '\n'.join(config_lines)
         
     except Exception as e:

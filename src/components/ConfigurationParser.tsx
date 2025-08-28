@@ -3,6 +3,7 @@ interface Interface {
   config: string[];
   isAccess: boolean;
   description?: string;
+  vlan?: string;
 }
 
 interface SwitchInfo {
@@ -105,6 +106,14 @@ export class ConfigurationParser {
               }
             }
           }
+
+          // Extract VLAN membership
+          if (trimmed.includes('vlan members')) {
+            const vlanMatch = trimmed.match(/vlan members\s+(\S+)/);
+            if (vlanMatch) {
+              iface.vlan = vlanMatch[1];
+            }
+          }
           
           // Check if it's an access port - improved detection
           if (trimmed.includes('family ethernet-switching port-mode access') || 
@@ -178,6 +187,11 @@ export class ConfigurationParser {
 
   private shouldExcludeInterface(iface: Interface): boolean {
     return iface.description?.toLowerCase().includes('interco-orange') || false;
+  }
+
+  private shouldIncludeForCleanup(iface: Interface): boolean {
+    const targetVlans = ['VL2_BUREAUTIQUE_Filaire-Wifi', 'VL120_BUREAUTIQUE_Filaire-Wifi'];
+    return iface.isAccess && iface.vlan && targetVlans.includes(iface.vlan);
   }
 
   generateDot1xConfig(interfaces: Interface[]): string {
@@ -273,7 +287,7 @@ export class ConfigurationParser {
     const configs: string[] = [];
     
     for (const iface of interfaces) {
-      if (iface.isAccess) {
+      if (this.shouldIncludeForCleanup(iface)) {
         // Remove MAC limit configurations
         configs.push(`delete ethernet-switching-options secure-access-port interface ${iface.name} mac-limit 3`);
         configs.push(`delete ethernet-switching-options secure-access-port interface ${iface.name} mac-limit action`);
@@ -285,7 +299,9 @@ export class ConfigurationParser {
 
   generateCleanupConfigWildcard(interfaces: Interface[]): string {
     const configs: string[] = [];
-    const groups = this.groupConsecutive(interfaces);
+    // Filter interfaces for cleanup (only VL2_BUREAUTIQUE_Filaire-Wifi and VL120_BUREAUTIQUE_Filaire-Wifi)
+    const cleanupInterfaces = interfaces.filter(iface => this.shouldIncludeForCleanup(iface));
+    const groups = this.groupConsecutive(cleanupInterfaces);
     
     for (const group of groups) {
       for (const range of group.ranges) {

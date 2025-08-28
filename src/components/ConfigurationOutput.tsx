@@ -151,7 +151,7 @@ ${cleanupConfig}
           <TabsContent value="cleanup" className="mt-6">
             <ConfigurationCard
               title="Nettoyage des interfaces"
-              description="Commandes wildcard range pour supprimer les configurations mac-limit des interfaces access groupées"
+              description="Commandes wildcard range pour supprimer les configurations mac-limit des interfaces des VLANs VL2_BUREAUTIQUE_Filaire-Wifi et VL120_BUREAUTIQUE_Filaire-Wifi uniquement"
               config={cleanupConfig}
               icon={Trash2}
               filename="cleanup-config.txt"

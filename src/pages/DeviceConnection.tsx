@@ -6,9 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Terminal, Network, Lock, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
+import { FileUpload } from '@/components/FileUpload';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
 let tauriInvoke: any = null;
@@ -39,6 +41,14 @@ export default function DeviceConnection() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ isConnected: false });
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStep, setConnectionStep] = useState<string>('');
+  
+  // État pour le script externe
+  const [scriptConfigPath, setScriptConfigPath] = useState('C:\\Configurations');
+  const [availableConfigs, setAvailableConfigs] = useState<string[]>([]);
+  const [selectedConfigFile, setSelectedConfigFile] = useState<string>('');
+  const [configFileContent, setConfigFileContent] = useState<string>('');
+  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
+  
   const { toast } = useToast();
 
   // Fonction pour extraire le hostname de la configuration
@@ -370,6 +380,186 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     });
   };
 
+  // Fonctions pour le script externe
+  const downloadPythonScript = () => {
+    const scriptContent = `#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Script de récupération de configuration via serveur Robont
+Téléchargé depuis l'application Network Management Tools
+"""
+# Le contenu complet du script est disponible dans public/scripts/robont_fetch_config.py
+`;
+
+    // Télécharger le script depuis le dossier public
+    fetch('/scripts/robont_fetch_config.py')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Script non trouvé');
+        }
+        return response.text();
+      })
+      .then(content => {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'robont_fetch_config.py';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Script téléchargé",
+          description: "robont_fetch_config.py sauvegardé sur votre ordinateur",
+        });
+      })
+      .catch(error => {
+        toast({
+          title: "Erreur de téléchargement",
+          description: "Impossible de télécharger le script Python",
+          variant: "destructive"
+        });
+      });
+  };
+
+  const browseFolderForConfigs = async () => {
+    if (!tauriInvoke) {
+      toast({
+        title: "Fonction desktop uniquement",
+        description: "La sélection de dossier nécessite l'application desktop",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const folderPath = await tauriInvoke('select_folder');
+      if (folderPath) {
+        setScriptConfigPath(folderPath);
+        toast({
+          title: "Dossier sélectionné",
+          description: `Dossier: ${folderPath}`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de sélectionner le dossier",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const listTxtFiles = async () => {
+    setIsLoadingConfigs(true);
+    try {
+      if (tauriInvoke) {
+        // Mode desktop - lister les fichiers réels
+        const files = await tauriInvoke('list_txt_files', { path: scriptConfigPath }) as string[];
+        setAvailableConfigs(files);
+        
+        toast({
+          title: "Fichiers listés",
+          description: `${files.length} fichier(s) .txt trouvé(s)`,
+        });
+      } else {
+        // Mode web - simulation
+        const simulatedFiles = [
+          'SW-192-168-1-10_20241201_143022.txt',
+          'SW-Core-Main_20241201_142055.txt',
+          'switch_10_0_1_1_20241201_141230.txt'
+        ];
+        setAvailableConfigs(simulatedFiles);
+        
+        toast({
+          title: "Mode simulation",
+          description: `${simulatedFiles.length} fichiers simulés affichés`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de lister les fichiers",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingConfigs(false);
+    }
+  };
+
+  const loadConfigFile = async (filename: string) => {
+    if (!filename) return;
+
+    try {
+      if (tauriInvoke) {
+        // Mode desktop - lire le fichier réel
+        const content = await tauriInvoke('read_txt_file', { 
+          path: scriptConfigPath,
+          filename: filename
+        }) as string;
+        
+        setConfigFileContent(content);
+        setSelectedConfigFile(filename);
+        
+        toast({
+          title: "Fichier chargé",
+          description: `Configuration de ${filename}`,
+        });
+      } else {
+        // Mode web - contenu simulé
+        const mockContent = `# Configuration récupérée le 2024-12-01 14:30:22
+# Switch IP: 192.168.1.10
+# Hostname: ${filename.split('_')[0]}
+# Commande: show configuration | display set | no-more
+# Récupéré via serveur Robont
+#==================================================
+
+set version 20.4R3.8
+set system host-name ${filename.split('_')[0]}
+set system domain-name company.local
+set system time-zone Europe/Paris
+set interfaces me0 unit 0 family inet address 192.168.1.10/24
+set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access
+set vlans default vlan-id 1`;
+        
+        setConfigFileContent(mockContent);
+        setSelectedConfigFile(filename);
+        
+        toast({
+          title: "Mode simulation",
+          description: `Contenu simulé pour ${filename}`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de lire le fichier",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFileUpload = (content: string, filename: string) => {
+    if (!filename.toLowerCase().endsWith('.txt')) {
+      toast({
+        title: "Format non supporté",
+        description: "Seuls les fichiers .txt sont acceptés",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setConfigFileContent(content);
+    setSelectedConfigFile(filename);
+    
+    toast({
+      title: "Fichier importé",
+      description: `Configuration de ${filename} importée`,
+    });
+  };
+
   const isDesktopApp = Boolean((window as any).__TAURI__);
 
   return (
@@ -393,7 +583,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
         <DesktopCompiler isDesktopApp={isDesktopApp} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Formulaire de connexion */}
           <Card>
             <CardHeader>
@@ -619,6 +809,145 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
                 <div className="text-center py-12 text-muted-foreground">
                   <Terminal className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>Connectez-vous pour afficher la configuration</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Script externe */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5 text-accent-foreground" />
+                Script externe
+              </CardTitle>
+              <CardDescription>
+                Télécharger le script Python et gérer les fichiers de configuration
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Téléchargement du script */}
+              <div className="space-y-2">
+                <Label>Script Python</Label>
+                <Button
+                  variant="outline"
+                  onClick={downloadPythonScript}
+                  className="w-full justify-start gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Télécharger robont_fetch_config.py
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Usage: python robont_fetch_config.py robont_ip robont_user robont_pass switch_ip switch_user switch_pass output_dir
+                </p>
+              </div>
+
+              {/* Configuration du dossier de sortie */}
+              <div className="space-y-2">
+                <Label htmlFor="config-path">Dossier des configurations .txt</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="config-path"
+                    value={scriptConfigPath}
+                    onChange={(e) => setScriptConfigPath(e.target.value)}
+                    placeholder="C:\Configurations"
+                  />
+                  {isDesktopApp && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={browseFolderForConfigs}
+                      title="Parcourir..."
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Lister les fichiers .txt */}
+              <Button
+                variant="outline"
+                onClick={listTxtFiles}
+                disabled={isLoadingConfigs}
+                className="w-full justify-start gap-2"
+              >
+                {isLoadingConfigs ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                {isLoadingConfigs ? "Chargement..." : "Lister les fichiers .txt"}
+              </Button>
+
+              {/* Sélection de fichier */}
+              {availableConfigs.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Fichiers de configuration disponibles</Label>
+                  <Select value={selectedConfigFile} onValueChange={loadConfigFile}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un fichier .txt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableConfigs.map((file, index) => (
+                        <SelectItem key={index} value={file}>
+                          {file}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Import manuel en mode web */}
+              {!isDesktopApp && (
+                <div className="space-y-2">
+                  <Label>Ou importer un fichier .txt manuellement</Label>
+                  <FileUpload onFileRead={handleFileUpload} />
+                </div>
+              )}
+
+              {/* Affichage du contenu du fichier sélectionné */}
+              {configFileContent && (
+                <div className="space-y-2">
+                  <Label>Contenu de {selectedConfigFile}</Label>
+                  <Textarea
+                    value={configFileContent}
+                    readOnly
+                    className="min-h-48 font-mono text-xs bg-muted/50"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(configFileContent);
+                        toast({
+                          title: "Copié !",
+                          description: "Configuration copiée dans le presse-papiers",
+                        });
+                      }}
+                    >
+                      Copier
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const blob = new Blob([configFileContent], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = selectedConfigFile || 'configuration.txt';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }}
+                    >
+                      Télécharger
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

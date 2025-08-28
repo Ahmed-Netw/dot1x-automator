@@ -26,6 +26,9 @@ interface ConnectionStatus {
 }
 
 export default function DeviceConnection() {
+  // Force recompilation - all "robont" references changed to "rebond"
+  console.log('DeviceConnection loaded with rebond variables');
+  
   // Serveur rebond (IP fixe selon le script)
   const [rebondServerIp] = useState('6.91.128.111');
   const [rebondUsername, setRebondUsername] = useState('');
@@ -513,7 +516,7 @@ Téléchargé depuis l'application Network Management Tools
 # Switch IP: 192.168.1.10
 # Hostname: ${filename.split('_')[0]}
 # Commande: show configuration | display set | no-more
-# Récupéré via serveur Robont
+# Récupéré via serveur Rebond
 #==================================================
 
 set version 20.4R3.8
@@ -735,7 +738,7 @@ set vlans default vlan-id 1`;
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-6">
-              {/* Section Serveur Robont */}
+              {/* Section Serveur Rebond */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-secondary-foreground">
                   <div className="w-2 h-2 rounded-full bg-secondary-foreground"></div>

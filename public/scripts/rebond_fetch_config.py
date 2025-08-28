@@ -138,9 +138,7 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         print(f"✅ Connecté au serveur Rebond")
         print(f"🔗 Exécution de la commande via SSH vers le switch {switch_ip}...")
         
-        # Commande complète pour exécuter directement dans le CLI Juniper
-        # Note: Les lignes 'set' sont le FORMAT de sortie de la commande, pas des commandes exécutées
-        # Ajout d'options SSH pour compatibilité avec les équipements Juniper anciens
+        # Options SSH pour compatibilité avec différents équipements
         ssh_options = [
             "-o StrictHostKeyChecking=no",
             "-o UserKnownHostsFile=/dev/null",
@@ -150,61 +148,60 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
             "-o MACs=hmac-md5,hmac-sha1,hmac-sha2-256"
         ]
         ssh_opts = " ".join(ssh_options)
-        full_command = f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'"
         
-        print("📋 Exécution de: show configuration | display set | no-more")
-        print("ℹ️  Note: Les lignes 'set' sont le format d'affichage de Junos, pas des commandes exécutées")
+        # Essayer différentes commandes selon le type d'équipement
+        commands_to_try = [
+            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration | display set | no-more'",
+            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'",
+            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration'",
+            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show running-config'"
+        ]
         
-        # Exécuter la commande directement
-        stdin, stdout, stderr = rebond_client.exec_command(full_command, timeout=60)
+        print("📋 Récupération de la configuration...")
         
-        # Lire la sortie
-        config_output = stdout.read().decode('utf-8', errors='ignore')
-        error_output = stderr.read().decode('utf-8', errors='ignore')
+        config_output = ""
+        error_output = ""
+        success = False
+        
+        # Essayer chaque commande jusqu'à ce qu'une fonctionne
+        for i, command in enumerate(commands_to_try):
+            print(f"🔄 Tentative {i+1}/{len(commands_to_try)}")
+            try:
+                # Exécuter la commande
+                stdin, stdout, stderr = rebond_client.exec_command(command, timeout=60)
+                
+                # Lire la sortie
+                config_output = stdout.read().decode('utf-8', errors='ignore')
+                error_output = stderr.read().decode('utf-8', errors='ignore')
+                
+                # Si pas d'erreur critique SSH, on considère que ça marche
+                if "no matching cipher" not in error_output and "unknown command" not in config_output:
+                    success = True
+                    break
+                    
+            except Exception as e:
+                error_output = str(e)
+                continue
         
         # Fermer la connexion
         rebond_client.close()
         
+        if not success:
+            raise Exception(f"Toutes les tentatives ont échoué. Dernière erreur: {error_output}")
+        
         print(f"✅ Configuration récupérée depuis {switch_ip}")
         print(f"📊 Taille de la sortie: {len(config_output)} caractères")
         
-        # Vérifier s'il y a des erreurs
+        # Afficher les erreurs non critiques
         if error_output and "warning" not in error_output.lower():
-            print(f"⚠️  Erreurs détectées: {error_output}")
+            print(f"⚠️  Messages: {error_output}")
         
-        # Analyser et nettoyer la sortie
-        lines = config_output.strip().split('\n')
-        config_lines = []
+        # Si la sortie est vide ou très courte, sauvegarder quand même
+        if len(config_output.strip()) < 10:
+            print("⚠️  Sortie très courte, sauvegarde quand même...")
         
-        for line in lines:
-            stripped_line = line.strip()
-            # Capturer toutes les lignes qui commencent par 'set '
-            if stripped_line.startswith('set ') and len(stripped_line) > 10:
-                config_lines.append(stripped_line)
-        
-        if not config_lines:
-            # Sauvegarder la sortie brute pour débogage
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            debug_file = os.path.join(script_dir, "debug_output.txt")
-            with open(debug_file, 'w', encoding='utf-8') as f:
-                f.write("=== SORTIE BRUTE ===\n")
-                f.write(config_output)
-                f.write("\n=== ERREURS ===\n")
-                f.write(error_output)
-            print(f"🐛 Sortie brute sauvegardée dans {debug_file} pour débogage")
-            
-            # Message d'aide plus clair
-            print("❌ Aucune ligne de configuration 'set' trouvée.")
-            print("💡 Ceci peut indiquer que:")
-            print("   • La commande a été exécutée dans le shell FreeBSD au lieu du CLI Junos")
-            print("   • Le switch n'est pas un équipement Juniper")
-            print("   • Il y a un problème d'authentification ou de connectivité")
-            print(f"   • Vérifiez le fichier debug_output.txt pour plus de détails")
-            
-            raise Exception("Aucune ligne de configuration 'set' trouvée dans la sortie")
-        
-        print(f"📋 {len(config_lines)} lignes de configuration extraites")
-        return '\n'.join(config_lines)
+        # Retourner la configuration brute - on laisse save_configuration s'occuper du formatage
+        return config_output.strip()
         
     except Exception as e:
         raise Exception(f"Erreur lors de la connexion: {str(e)}")

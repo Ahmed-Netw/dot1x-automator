@@ -116,8 +116,46 @@ def extract_hostname(config_text):
     
     return None
 
+def is_valid_juniper_config(config_text):
+    """Vérifie si c'est une vraie configuration Juniper"""
+    if not config_text or len(config_text.strip()) < 50:
+        return False
+    
+    # Patterns typiques des configurations Juniper
+    juniper_patterns = [
+        r'set\s+system\s+host-name',
+        r'set\s+interfaces\s+',
+        r'set\s+protocols\s+',
+        r'set\s+policy-options\s+',
+        r'set\s+security\s+',
+        r'set\s+routing-options\s+'
+    ]
+    
+    # Au moins 2 patterns doivent correspondre
+    matches = sum(1 for pattern in juniper_patterns if re.search(pattern, config_text, re.IGNORECASE))
+    return matches >= 2
+
+def is_valid_cisco_config(config_text):
+    """Vérifie si c'est une vraie configuration Cisco/Aruba"""
+    if not config_text or len(config_text.strip()) < 50:
+        return False
+    
+    # Patterns typiques des configurations Cisco
+    cisco_patterns = [
+        r'hostname\s+\S+',
+        r'interface\s+\S+',
+        r'ip\s+address\s+',
+        r'router\s+\S+',
+        r'vlan\s+\d+',
+        r'switchport\s+'
+    ]
+    
+    # Au moins 2 patterns doivent correspondre
+    matches = sum(1 for pattern in cisco_patterns if re.search(pattern, config_text, re.IGNORECASE))
+    return matches >= 2
+
 def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass):
-    """Connexion via serveur Rebond vers switch"""
+    """Connexion via serveur Rebond vers switch avec validation robuste"""
     try:
         import paramiko
         
@@ -138,10 +176,14 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         print(f"✅ Connecté au serveur Rebond")
         print(f"🔗 Exécution de la commande via SSH vers le switch {switch_ip}...")
         
-        # Options SSH pour compatibilité avec différents équipements
+        # Options SSH robustes avec TTY allocation
         ssh_options = [
+            "-tt",  # Force TTY allocation
             "-o StrictHostKeyChecking=no",
             "-o UserKnownHostsFile=/dev/null",
+            "-o ConnectTimeout=30",
+            "-o ServerAliveInterval=10",
+            "-o ServerAliveCountMax=3",
             "-o Ciphers=aes128-cbc,3des-cbc,aes192-cbc,aes256-cbc,aes128-ctr,aes192-ctr,aes256-ctr",
             "-o KexAlgorithms=diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1,diffie-hellman-group-exchange-sha256",
             "-o HostKeyAlgorithms=ssh-rsa,ssh-dss",
@@ -149,62 +191,121 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         ]
         ssh_opts = " ".join(ssh_options)
         
-        # Essayer différentes commandes selon le type d'équipement
-        commands_to_try = [
-            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration | display set | no-more'",
-            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'",
-            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration'",
-            f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show running-config'"
+        # Commandes spécialisées par type d'équipement avec validation stricte
+        command_sets = [
+            {
+                "name": "Juniper CLI (format set)",
+                "commands": [
+                    f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration | display set | no-more'",
+                    f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'"
+                ],
+                "validator": is_valid_juniper_config
+            },
+            {
+                "name": "Juniper CLI (format standard)",
+                "commands": [
+                    f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration | no-more'",
+                    f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | no-more\"'"
+                ],
+                "validator": is_valid_juniper_config
+            },
+            {
+                "name": "Cisco/Aruba running-config",
+                "commands": [
+                    f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'terminal length 0; show running-config'",
+                    f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show running-config'"
+                ],
+                "validator": is_valid_cisco_config
+            }
         ]
         
         print("📋 Récupération de la configuration...")
         
-        config_output = ""
-        error_output = ""
-        success = False
-        
-        # Essayer chaque commande jusqu'à ce qu'une fonctionne
-        for i, command in enumerate(commands_to_try):
-            print(f"🔄 Tentative {i+1}/{len(commands_to_try)}")
-            try:
-                # Exécuter la commande
-                stdin, stdout, stderr = rebond_client.exec_command(command, timeout=60)
-                
-                # Lire la sortie
-                config_output = stdout.read().decode('utf-8', errors='ignore')
-                error_output = stderr.read().decode('utf-8', errors='ignore')
-                
-                # Si pas d'erreur critique SSH, on considère que ça marche
-                if "no matching cipher" not in error_output and "unknown command" not in config_output:
-                    success = True
-                    break
+        # Essayer chaque set de commandes
+        for cmd_set in command_sets:
+            print(f"🔄 Test {cmd_set['name']}...")
+            
+            for i, command in enumerate(cmd_set["commands"]):
+                print(f"   Tentative {i+1}/{len(cmd_set['commands'])}")
+                try:
+                    # Exécuter la commande avec un timeout plus long
+                    stdin, stdout, stderr = rebond_client.exec_command(command, timeout=90)
                     
-            except Exception as e:
-                error_output = str(e)
-                continue
+                    # Lire la sortie
+                    config_output = stdout.read().decode('utf-8', errors='ignore')
+                    error_output = stderr.read().decode('utf-8', errors='ignore')
+                    exit_status = stdout.channel.recv_exit_status()
+                    
+                    print(f"   Exit status: {exit_status}, Output size: {len(config_output)} chars")
+                    
+                    # Vérifications de base
+                    if exit_status != 0:
+                        print(f"   ❌ Commande échouée (exit {exit_status})")
+                        continue
+                    
+                    if len(config_output.strip()) < 50:
+                        print(f"   ❌ Sortie trop courte ({len(config_output)} chars)")
+                        continue
+                    
+                    # Vérifier les erreurs SSH critiques
+                    critical_errors = [
+                        "no matching cipher",
+                        "connection refused",
+                        "permission denied",
+                        "host key verification failed",
+                        "could not resolve hostname"
+                    ]
+                    
+                    if any(error.lower() in error_output.lower() for error in critical_errors):
+                        print(f"   ❌ Erreur SSH critique: {error_output}")
+                        continue
+                    
+                    # Valider le contenu avec le validateur spécialisé
+                    if cmd_set["validator"](config_output):
+                        print(f"   ✅ Configuration valide détectée!")
+                        print(f"   📊 Taille: {len(config_output)} caractères")
+                        
+                        # Fermer la connexion
+                        rebond_client.close()
+                        
+                        # Nettoyer la configuration (supprimer les prompts parasites)
+                        cleaned_config = clean_configuration_output(config_output)
+                        return cleaned_config
+                    else:
+                        print(f"   ❌ Contenu non valide pour {cmd_set['name']}")
+                        # Afficher un échantillon pour debug
+                        sample = config_output[:200].replace('\n', '\\n')
+                        print(f"   🔍 Échantillon: {sample}...")
+                        
+                except Exception as e:
+                    print(f"   ❌ Erreur d'exécution: {str(e)}")
+                    continue
         
         # Fermer la connexion
         rebond_client.close()
         
-        if not success:
-            raise Exception(f"Toutes les tentatives ont échoué. Dernière erreur: {error_output}")
-        
-        print(f"✅ Configuration récupérée depuis {switch_ip}")
-        print(f"📊 Taille de la sortie: {len(config_output)} caractères")
-        
-        # Afficher les erreurs non critiques
-        if error_output and "warning" not in error_output.lower():
-            print(f"⚠️  Messages: {error_output}")
-        
-        # Si la sortie est vide ou très courte, sauvegarder quand même
-        if len(config_output.strip()) < 10:
-            print("⚠️  Sortie très courte, sauvegarde quand même...")
-        
-        # Retourner la configuration brute - on laisse save_configuration s'occuper du formatage
-        return config_output.strip()
+        raise Exception("Aucune configuration valide récupérée. Vérifiez les credentials et la connectivité.")
         
     except Exception as e:
         raise Exception(f"Erreur lors de la connexion: {str(e)}")
+
+def clean_configuration_output(config_text):
+    """Nettoie la sortie de configuration des prompts parasites"""
+    lines = config_text.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        # Supprimer les prompts SSH et les messages parasites
+        if any(prompt in line for prompt in [
+            '$ ', '> ', '# ', 'user@', 'Last login:', 
+            'Welcome to', 'Warning:', 'Connection to', 'Authenticated to'
+        ]):
+            continue
+        
+        # Garder les lignes de configuration
+        cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines).strip()
 
 def save_configuration(config_text, switch_ip, output_dir):
     """Sauvegarde la configuration dans un fichier .txt"""

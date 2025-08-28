@@ -583,7 +583,7 @@ set vlans default vlan-id 1`;
 
         <DesktopCompiler isDesktopApp={isDesktopApp} />
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Script externe */}
           <Card className="h-full flex flex-col">
             <CardHeader>

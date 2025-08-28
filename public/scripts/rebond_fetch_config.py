@@ -140,7 +140,17 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         
         # Commande complète pour exécuter directement dans le CLI Juniper
         # Note: Les lignes 'set' sont le FORMAT de sortie de la commande, pas des commandes exécutées
-        full_command = f"sshpass -p '{switch_pass}' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'"
+        # Ajout d'options SSH pour compatibilité avec les équipements Juniper anciens
+        ssh_options = [
+            "-o StrictHostKeyChecking=no",
+            "-o UserKnownHostsFile=/dev/null",
+            "-o Ciphers=aes128-cbc,3des-cbc,aes192-cbc,aes256-cbc,aes128-ctr,aes192-ctr,aes256-ctr",
+            "-o KexAlgorithms=diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1,diffie-hellman-group-exchange-sha256",
+            "-o HostKeyAlgorithms=ssh-rsa,ssh-dss",
+            "-o MACs=hmac-md5,hmac-sha1,hmac-sha2-256"
+        ]
+        ssh_opts = " ".join(ssh_options)
+        full_command = f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'"
         
         print("📋 Exécution de: show configuration | display set | no-more")
         print("ℹ️  Note: Les lignes 'set' sont le format d'affichage de Junos, pas des commandes exécutées")

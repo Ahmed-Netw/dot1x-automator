@@ -42,9 +42,6 @@ export class BridgeClient {
       const response = await fetch(`${this.baseURL}/health`, {
         method: 'GET',
         mode: 'cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
       const data = await response.json();

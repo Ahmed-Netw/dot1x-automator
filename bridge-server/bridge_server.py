@@ -24,7 +24,7 @@ app = FastAPI(title="Network Management Bridge Server", version="1.0.0")
 # Configuration CORS pour permettre les requêtes depuis l'app web
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://*.lovable.app"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*\.lovable\.(app|dev)$|^null$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,12 +71,20 @@ async def ping_device(request: PingRequest):
         param = "-n" if platform.system().lower() == "windows" else "-c"
         
         # Ping avec timeout de 3 secondes
-        result = subprocess.run(
-            ["ping", param, "1", "-W" if platform.system().lower() == "windows" else "-w", "3", request.host],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
+        if platform.system().lower() == "windows":
+            result = subprocess.run(
+                ["ping", param, "1", "-w", "3000", request.host],  # -w en millisecondes sur Windows
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+        else:
+            result = subprocess.run(
+                ["ping", param, "1", "-w", "3", request.host],  # -w en secondes sur Linux/Mac
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
         
         success = result.returncode == 0
         

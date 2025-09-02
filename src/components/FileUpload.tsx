@@ -28,7 +28,7 @@ export const FileUpload = ({ onFileRead }: FileUploadProps) => {
     setIsDragging(false);
     
     const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0 && files[0].type === 'text/plain') {
+    if (files.length > 0) {
       handleFileRead(files[0]);
     }
   };

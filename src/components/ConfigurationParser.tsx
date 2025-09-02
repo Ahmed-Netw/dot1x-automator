@@ -31,8 +31,8 @@ export class ConfigurationParser {
         info.hostname = trimmed.split(' ')[3];
       }
       
-      // PRIORITY: Extract VLAN 160 (VL160_ADMIN) IP address - both syntaxes
-      const vlan160Match = trimmed.match(/^set interfaces vlan(?:\.| unit )160 .*family inet address (\S+)/);
+      // PRIORITY: Extract VLAN 160 (VL160_ADMIN) IP address - enhanced to include IRB
+      const vlan160Match = trimmed.match(/^set interfaces (?:vlan|irb)(?:\.| unit )160 .*family inet address (\S+)/);
       if (vlan160Match) {
         const ip = vlan160Match[1].split('/')[0];
         info.vlan160Ip = ip;
@@ -46,20 +46,21 @@ export class ConfigurationParser {
         const ipIndex = parts.findIndex(part => part === 'address') + 1;
         if (ipIndex > 0 && parts[ipIndex]) {
           const ip = parts[ipIndex].split('/')[0];
-          // Prefer management/admin VLAN IPs
-          if (ip.startsWith('10.148.') || ip.includes('192.168.') || !info.managementIp) {
+          // Prefer management/admin VLAN IPs (internal ranges)
+          if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.16.') || !info.managementIp) {
             info.managementIp = ip;
           }
         }
       }
       
-      // Also look for other VLAN interfaces only if management IP not set
-      if (!info.managementIp && trimmed.includes('set interfaces vlan') && trimmed.includes('family inet address')) {
+      // Also look for IRB and other VLAN interfaces only if management IP not set
+      if (!info.managementIp && (trimmed.includes('set interfaces vlan') || trimmed.includes('set interfaces irb')) && trimmed.includes('family inet address')) {
         const parts = trimmed.split(' ');
         const ipIndex = parts.findIndex(part => part === 'address') + 1;
         if (ipIndex > 0 && parts[ipIndex]) {
           const ip = parts[ipIndex].split('/')[0];
-          if (ip.startsWith('10.148.') || ip.includes('192.168.')) {
+          // Prioritize internal IP ranges
+          if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.16.')) {
             info.managementIp = ip;
           }
         }
@@ -76,61 +77,61 @@ export class ConfigurationParser {
     for (const line of lines) {
       const trimmed = line.trim();
       
-      // Detect interface configuration lines
-      if (trimmed.startsWith('set interfaces') && trimmed.includes('ge-')) {
+      // Detect interface configuration lines - support ge-, xe-, et- interfaces
+      const interfaceMatch = trimmed.match(/^set interfaces ((?:ge|xe|et)-\d+\/\d+\/\d+)/);
+      if (interfaceMatch) {
+        const interfaceName = interfaceMatch[1];
         const parts = trimmed.split(' ');
-        if (parts.length >= 3) {
-          const interfaceName = parts[2];
-          
-          if (!interfaces.has(interfaceName)) {
-            interfaces.set(interfaceName, {
-              name: interfaceName,
-              config: [],
-              isAccess: false
-            });
-          }
-          
-          const iface = interfaces.get(interfaceName)!;
-          iface.config.push(trimmed);
-          
-          // Extract description if present
-          if (trimmed.includes('description')) {
-            const descMatch = trimmed.match(/description\s+"([^"]+)"/);
-            if (descMatch) {
-              iface.description = descMatch[1];
-            } else {
-              // Handle description without quotes
-              const descIndex = parts.findIndex(part => part === 'description') + 1;
-              if (descIndex > 0 && parts[descIndex]) {
-                iface.description = parts.slice(descIndex).join(' ').replace(/"/g, '');
-              }
+        
+        if (!interfaces.has(interfaceName)) {
+          interfaces.set(interfaceName, {
+            name: interfaceName,
+            config: [],
+            isAccess: false
+          });
+        }
+        
+        const iface = interfaces.get(interfaceName)!;
+        iface.config.push(trimmed);
+        
+        // Extract description if present
+        if (trimmed.includes('description')) {
+          const descMatch = trimmed.match(/description\s+"([^"]+)"/);
+          if (descMatch) {
+            iface.description = descMatch[1];
+          } else {
+            // Handle description without quotes
+            const descIndex = parts.findIndex(part => part === 'description') + 1;
+            if (descIndex > 0 && parts[descIndex]) {
+              iface.description = parts.slice(descIndex).join(' ').replace(/"/g, '');
             }
           }
+        }
 
-          // Extract VLAN membership
-          if (trimmed.includes('vlan members')) {
-            const vlanMatch = trimmed.match(/vlan members\s+(\S+)/);
-            if (vlanMatch) {
-              iface.vlan = vlanMatch[1];
-            }
+        // Extract VLAN membership
+        if (trimmed.includes('vlan members')) {
+          const vlanMatch = trimmed.match(/vlan members\s+(\S+)/);
+          if (vlanMatch) {
+            iface.vlan = vlanMatch[1];
           }
-          
-          // Check if it's an access port - improved detection
-          if (trimmed.includes('family ethernet-switching port-mode access') || 
-              (trimmed.includes('ethernet-switching-options') && trimmed.includes('port-mode access'))) {
-            iface.isAccess = true;
-          }
+        }
+        
+        // Check if it's an access port - support both port-mode and interface-mode
+        if (trimmed.includes('family ethernet-switching port-mode access') || 
+            trimmed.includes('family ethernet-switching interface-mode access') ||
+            (trimmed.includes('ethernet-switching-options') && trimmed.includes('port-mode access'))) {
+          iface.isAccess = true;
         }
       }
     }
 
     return Array.from(interfaces.values()).filter(iface => 
-      iface.name.startsWith('ge-') && iface.isAccess
+      /(ge|xe|et)-\d+\/\d+\/\d+/.test(iface.name) && iface.isAccess
     );
   }
 
   private parsePort(interfaceName: string): { fpc: number; pic: number; port: number } | null {
-    const match = interfaceName.match(/ge-(\d+)\/(\d+)\/(\d+)/);
+    const match = interfaceName.match(/(?:ge|xe|et)-(\d+)\/(\d+)\/(\d+)/);
     if (!match) return null;
     
     return {

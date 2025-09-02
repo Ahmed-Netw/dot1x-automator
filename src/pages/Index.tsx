@@ -6,7 +6,9 @@ import { SwitchInfo } from '@/components/SwitchInfo';
 import { InterfaceList } from '@/components/InterfaceList';
 import { ConfigurationOutput } from '@/components/ConfigurationOutput';
 import { ConfigurationParser } from '@/components/ConfigurationParser';
-import { Router, Network } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Router, Network, Bug, ChevronDown } from 'lucide-react';
 
 const Index = () => {
   const [configContent, setConfigContent] = useState<string>('');
@@ -24,6 +26,33 @@ const Index = () => {
   const dot1xConfig = parser?.generateDot1xConfigWildcard(interfaces) || '';
   const cleanupConfig = parser?.generateCleanupConfigWildcard(interfaces) || '';
   const radiusConfig = parser?.getRadiusConfig(switchInfo?.managementIp) || '';
+
+  // Debug information
+  const debugInfo = parser ? (() => {
+    const lines = configContent.split('\n');
+    const vlan160Lines = lines.filter(line => line.includes('irb.160') || line.includes('vlan.160') || line.includes('vlan unit 160'));
+    const accessLines = lines.filter(line => 
+      line.includes('ethernet-switching') && 
+      (line.includes('port-mode access') || line.includes('interface-mode access'))
+    );
+    const interfaceLines = lines.filter(line => 
+      line.match(/^set interfaces (ge|xe|et)-\d+\/\d+\/\d+/)
+    );
+    
+    return {
+      totalLines: lines.length,
+      vlan160Matches: vlan160Lines.length,
+      vlan160Samples: vlan160Lines.slice(0, 3),
+      accessMatches: accessLines.length,
+      accessSamples: accessLines.slice(0, 5),
+      interfaceMatches: interfaceLines.length,
+      interfaceTypes: {
+        ge: interfaceLines.filter(l => l.includes('ge-')).length,
+        xe: interfaceLines.filter(l => l.includes('xe-')).length,
+        et: interfaceLines.filter(l => l.includes('et-')).length,
+      }
+    };
+  })() : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,6 +85,62 @@ const Index = () => {
           {/* Show results only if file is uploaded */}
           {parser && (
             <>
+              {/* Debug Panel */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Bug className="h-4 w-4 text-orange-500" />
+                          Debug Parsing ({debugInfo?.totalLines} lignes analysées)
+                        </div>
+                        <ChevronDown className="h-4 w-4" />
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <h4 className="font-semibold mb-2">VLAN 160 Detection</h4>
+                          <p>Lignes trouvées: <span className="font-mono">{debugInfo?.vlan160Matches}</span></p>
+                          {debugInfo?.vlan160Samples.map((line, i) => (
+                            <p key={i} className="font-mono text-xs bg-muted p-1 rounded mt-1 truncate">
+                              {line.trim()}
+                            </p>
+                          ))}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">Access Ports Detection</h4>
+                          <p>Lignes access trouvées: <span className="font-mono">{debugInfo?.accessMatches}</span></p>
+                          {debugInfo?.accessSamples.map((line, i) => (
+                            <p key={i} className="font-mono text-xs bg-muted p-1 rounded mt-1 truncate">
+                              {line.trim()}
+                            </p>
+                          ))}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">Interfaces Types</h4>
+                          <p>GE: <span className="font-mono">{debugInfo?.interfaceTypes.ge}</span></p>
+                          <p>XE: <span className="font-mono">{debugInfo?.interfaceTypes.xe}</span></p>
+                          <p>ET: <span className="font-mono">{debugInfo?.interfaceTypes.et}</span></p>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold mb-2">Parsing Results</h4>
+                          <p>Hostname: <span className="font-mono">{switchInfo?.hostname || 'Non trouvé'}</span></p>
+                          <p>Management IP: <span className="font-mono">{switchInfo?.managementIp || 'Non trouvé'}</span></p>
+                          <p>VLAN 160 IP: <span className="font-mono">{switchInfo?.vlan160Ip || 'Non trouvé'}</span></p>
+                          <p>Interfaces access: <span className="font-mono">{interfaces.length}</span></p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
+
               {/* Switch Information */}
               <SwitchInfo 
                 hostname={switchInfo?.hostname}

@@ -24,6 +24,7 @@ try {
 interface ConnectionStatus {
   isConnected: boolean;
   error?: string;
+  message?: string;
 }
 
 export default function DeviceConnection() {
@@ -258,12 +259,82 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
   };
 
   const handleConnect = async () => {
-    // En mode web, empêcher la connexion réelle
-    if (!tauriInvoke) {
+    // Validation des champs même en mode simulation
+    if (!rebondUsername || !rebondPassword || !switchIp || !switchUsername) {
       toast({
-        title: "Fonction Desktop uniquement",
-        description: "La récupération de configuration nécessite l'application desktop pour exécuter le script Python",
+        title: "Erreur de saisie",
+        description: "Veuillez remplir tous les champs obligatoires",
         variant: "destructive"
+      });
+      return;
+    }
+
+    // Mode simulation web - simuler le processus de connexion
+    if (!tauriInvoke) {
+      setIsConnecting(true);
+      setConnectionStatus({ isConnected: false });
+      
+      // Simuler les étapes de connexion
+      setConnectionStep("🌐 Mode simulation - Connexion au serveur Rebond...");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setConnectionStep("🔑 Simulation - Authentification SSH...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setConnectionStep("📡 Simulation - Connexion au switch...");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setConnectionStep("📋 Simulation - Récupération de la configuration...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Configuration simulée
+      const simulatedConfig = `# Configuration simulée pour ${switchIp}
+interfaces {
+    ge-0/0/1 {
+        description "Port d'accès simulé";
+        unit 0 {
+            family ethernet-switching {
+                port-mode access;
+                vlan {
+                    members default;
+                }
+            }
+        }
+    }
+    ge-0/0/2 {
+        description "Port trunk simulé";
+        unit 0 {
+            family ethernet-switching {
+                port-mode trunk;
+                vlan {
+                    members [ vlan10 vlan20 ];
+                }
+            }
+        }
+    }
+}
+vlans {
+    vlan10 {
+        vlan-id 10;
+        description "VLAN Production";
+    }
+    vlan20 {
+        vlan-id 20;
+        description "VLAN Invités";
+    }
+}`;
+
+      setConfiguration(simulatedConfig);
+      setConnectionStatus({ 
+        isConnected: true,
+        message: "✅ Connexion simulée réussie - Utilisez l'app desktop pour une vraie connexion"
+      });
+      setConnectionStep("");
+      setIsConnecting(false);
+      
+      toast({
+        title: "Mode simulation",
+        description: "Configuration simulée générée avec succès",
       });
       return;
     }

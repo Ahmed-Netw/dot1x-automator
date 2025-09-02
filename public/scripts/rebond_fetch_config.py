@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Script de récupération de configuration via serveur Rebond
-Auteur: Équipe Network Tools
+Script de recuperation de configuration via serveur Rebond
+Auteur: Equipe Network Tools
 Version: 1.0
 Date: 2024
 
@@ -21,24 +21,24 @@ import re
 from pathlib import Path
 
 def install_paramiko():
-    """Installe paramiko si pas déjà installé"""
+    """Installe paramiko si pas deja installe"""
     try:
         import paramiko
         return True
     except ImportError:
-        print("📦 Installation de paramiko...")
+        print("?? Installation de paramiko...")
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "paramiko"])
-            print("✅ Paramiko installé avec succès")
+            print("? Paramiko installe avec succes")
             import paramiko
             return True
         except subprocess.CalledProcessError as e:
-            print(f"❌ Erreur lors de l'installation de paramiko: {e}")
+            print(f"? Erreur lors de l'installation de paramiko: {e}")
             return False
 
 def print_help():
     """Affiche l'aide du script"""
-    print("Script de récupération de configuration Juniper via serveur Rebond")
+    print("Script de recuperation de configuration Juniper via serveur Rebond")
     print()
     print("USAGE:")
     print("    python rebond_fetch_config.py <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass> <output_dir>")
@@ -52,18 +52,18 @@ def print_help():
     print("    switch_ip      IP du switch Juniper cible")
     print("    switch_user    Nom d'utilisateur du switch")
     print("    switch_pass    Mot de passe du switch")
-    print("    output_dir     Dossier de sauvegarde (sera créé si inexistant)")
+    print("    output_dir     Dossier de sauvegarde (sera cree si inexistant)")
     print()
-    print("PRÉREQUIS:")
-    print("    • Python 3 avec paramiko (installé automatiquement)")
-    print("    • sshpass installé sur le serveur Rebond")
-    print("    • Connectivité réseau Rebond → Switch")
+    print("PREREQUIS:")
+    print("    - Python 3 avec paramiko (installe automatiquement)")
+    print("    - sshpass installe sur le serveur Rebond")
+    print("    - Connectivite reseau Rebond ? Switch")
     print()
     print("EXEMPLE:")
     print('    python rebond_fetch_config.py 6.91.128.111 rebond_user "mon_pass" 192.168.1.10 admin "sw_pass" "C:\\Configurations"')
 
 def get_interactive_input():
-    """Collecte les paramètres en mode interactif"""
+    """Collecte les parametres en mode interactif"""
     import getpass
     
     print("Saisissez les informations de connexion:")
@@ -83,10 +83,10 @@ def get_interactive_input():
     
     print()
     
-    # Le fichier sera sauvegardé dans le répertoire du script
+    # Le fichier sera sauvegarde dans le repertoire du script
     output_dir = os.path.dirname(os.path.abspath(__file__))
     
-    print("📋 Récapitulatif:")
+    print("?? Recapitulatif:")
     print(f"   Rebond: {rebond_user}@{rebond_ip}")
     print(f"   Switch: {switch_user}@{switch_ip}")
     print(f"   Sortie: {output_dir}")
@@ -94,7 +94,7 @@ def get_interactive_input():
     
     confirm = input("Continuer? [O/n]: ").strip().lower()
     if confirm and confirm not in ['o', 'oui', 'y', 'yes']:
-        print("❌ Opération annulée")
+        print("? Operation annulee")
         sys.exit(0)
     
     return rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass, output_dir
@@ -117,7 +117,7 @@ def extract_hostname(config_text):
     return None
 
 def is_valid_juniper_config(config_text):
-    """Vérifie si c'est une vraie configuration Juniper"""
+    """Verifie si c'est une vraie configuration Juniper"""
     if not config_text or len(config_text.strip()) < 50:
         return False
     
@@ -136,7 +136,7 @@ def is_valid_juniper_config(config_text):
     return matches >= 2
 
 def is_valid_cisco_config(config_text):
-    """Vérifie si c'est une vraie configuration Cisco/Aruba"""
+    """Verifie si c'est une vraie configuration Cisco/Aruba"""
     if not config_text or len(config_text.strip()) < 50:
         return False
     
@@ -159,7 +159,7 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
     try:
         import paramiko
         
-        print(f"🔗 Connexion au serveur Rebond {rebond_ip}...")
+        print(f"?? Connexion au serveur Rebond {rebond_ip}...")
         
         # Connexion SSH au serveur Rebond
         rebond_client = paramiko.SSHClient()
@@ -173,8 +173,8 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
             allow_agent=False
         )
         
-        print(f"✅ Connecté au serveur Rebond")
-        print(f"🔗 Exécution de la commande via SSH vers le switch {switch_ip}...")
+        print(f"? Connecte au serveur Rebond")
+        print(f"?? Execution de la commande via SSH vers le switch {switch_ip}...")
         
         # Options SSH robustes avec TTY allocation
         ssh_options = [
@@ -191,7 +191,7 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
         ]
         ssh_opts = " ".join(ssh_options)
         
-        # Commandes spécialisées par type d'équipement avec validation stricte
+        # Commandes specialisees par type d'equipement avec validation stricte
         command_sets = [
             {
                 "name": "Juniper CLI (format set)",
@@ -219,16 +219,16 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
             }
         ]
         
-        print("📋 Récupération de la configuration...")
+        print("?? Recuperation de la configuration...")
         
         # Essayer chaque set de commandes
         for cmd_set in command_sets:
-            print(f"🔄 Test {cmd_set['name']}...")
+            print(f"?? Test {cmd_set['name']}...")
             
             for i, command in enumerate(cmd_set["commands"]):
                 print(f"   Tentative {i+1}/{len(cmd_set['commands'])}")
                 try:
-                    # Exécuter la commande avec un timeout plus long
+                    # Executer la commande avec un timeout plus long
                     stdin, stdout, stderr = rebond_client.exec_command(command, timeout=90)
                     
                     # Lire la sortie
@@ -238,16 +238,16 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
                     
                     print(f"   Exit status: {exit_status}, Output size: {len(config_output)} chars")
                     
-                    # Vérifications de base
+                    # Verifications de base
                     if exit_status != 0:
-                        print(f"   ❌ Commande échouée (exit {exit_status})")
+                        print(f"   ? Commande echouee (exit {exit_status})")
                         continue
                     
                     if len(config_output.strip()) < 50:
-                        print(f"   ❌ Sortie trop courte ({len(config_output)} chars)")
+                        print(f"   ? Sortie trop courte ({len(config_output)} chars)")
                         continue
                     
-                    # Vérifier les erreurs SSH critiques
+                    # Verifier les erreurs SSH critiques
                     critical_errors = [
                         "no matching cipher",
                         "connection refused",
@@ -257,13 +257,13 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
                     ]
                     
                     if any(error.lower() in error_output.lower() for error in critical_errors):
-                        print(f"   ❌ Erreur SSH critique: {error_output}")
+                        print(f"   ? Erreur SSH critique: {error_output}")
                         continue
                     
-                    # Valider le contenu avec le validateur spécialisé
+                    # Valider le contenu avec le validateur specialise
                     if cmd_set["validator"](config_output):
-                        print(f"   ✅ Configuration valide détectée!")
-                        print(f"   📊 Taille: {len(config_output)} caractères")
+                        print(f"   ? Configuration valide detectee!")
+                        print(f"   ?? Taille: {len(config_output)} caracteres")
                         
                         # Fermer la connexion
                         rebond_client.close()
@@ -272,19 +272,19 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_us
                         cleaned_config = clean_configuration_output(config_output)
                         return cleaned_config
                     else:
-                        print(f"   ❌ Contenu non valide pour {cmd_set['name']}")
-                        # Afficher un échantillon pour debug
+                        print(f"   ? Contenu non valide pour {cmd_set['name']}")
+                        # Afficher un echantillon pour debug
                         sample = config_output[:200].replace('\n', '\\n')
-                        print(f"   🔍 Échantillon: {sample}...")
+                        print(f"   ?? echantillon: {sample}...")
                         
                 except Exception as e:
-                    print(f"   ❌ Erreur d'exécution: {str(e)}")
+                    print(f"   ? Erreur d'execution: {str(e)}")
                     continue
         
         # Fermer la connexion
         rebond_client.close()
         
-        raise Exception("Aucune configuration valide récupérée. Vérifiez les credentials et la connectivité.")
+        raise Exception("Aucune configuration valide recuperee. Verifiez les credentials et la connectivite.")
         
     except Exception as e:
         raise Exception(f"Erreur lors de la connexion: {str(e)}")
@@ -310,13 +310,13 @@ def clean_configuration_output(config_text):
 def save_configuration(config_text, switch_ip, output_dir):
     """Sauvegarde la configuration dans un fichier .txt"""
     try:
-        # Le dossier de sortie est toujours le répertoire du script
+        # Le dossier de sortie est toujours le repertoire du script
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         
         # Extraire le hostname
         hostname = extract_hostname(config_text)
         
-        # Générer le nom de fichier (sans timestamp, juste le nom du switch)
+        # Generer le nom de fichier (sans timestamp, juste le nom du switch)
         if hostname:
             filename = f"{hostname}.txt"
         else:
@@ -325,20 +325,20 @@ def save_configuration(config_text, switch_ip, output_dir):
         filepath = os.path.join(output_dir, filename)
         
         # Ajouter l'en-tête au fichier
-        header = f"""# Configuration récupérée le {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        header = f"""# Configuration recuperee le {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 # Switch IP: {switch_ip}
-# Hostname: {hostname or 'Non détecté'}
+# Hostname: {hostname or 'Non detecte'}
 # Commande: show configuration | display set | no-more
-# Récupéré via serveur Rebond
+# Recupere via serveur Rebond
 #==================================================
 
 """
         
-        # Écrire le fichier (remplace le fichier existant s'il y en a un)
+        # ecrire le fichier (remplace le fichier existant s'il y en a un)
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(header + config_text)
         
-        print(f"📁 Configuration sauvegardée: {filepath}")
+        print(f"?? Configuration sauvegardee: {filepath}")
         return filepath
         
     except Exception as e:
@@ -346,26 +346,26 @@ def save_configuration(config_text, switch_ip, output_dir):
 
 def main():
     """Fonction principale"""
-    print("🚀 Script de récupération de configuration Juniper via Rebond")
+    print("?? Script de recuperation de configuration Juniper via Rebond")
     print("=" * 60)
     
-    # Vérifier les arguments ou --help
+    # Verifier les arguments ou --help
     if len(sys.argv) == 2 and sys.argv[1] in ['-h', '--help']:
         print_help()
         sys.exit(0)
     
     # Mode interactif si aucun argument
     if len(sys.argv) == 1:
-        print("📝 Mode interactif - Saisie des paramètres:")
+        print("?? Mode interactif - Saisie des parametres:")
         print()
         rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass, output_dir = get_interactive_input()
     elif len(sys.argv) != 7:
-        print("❌ Usage incorrect!")
+        print("? Usage incorrect!")
         print(f"Usage: {sys.argv[0]} <rebond_ip> <rebond_user> <rebond_pass> <switch_ip> <switch_user> <switch_pass>")
         print(f"   ou: {sys.argv[0]} --help")
         print("\nExemple:")
         print(f"python {sys.argv[0]} 6.91.128.111 rebond_user rebond_pass 192.168.1.10 switch_user switch_pass")
-        print("Note: Le fichier sera sauvegardé dans le répertoire du script sous le nom <hostname>.txt")
+        print("Note: Le fichier sera sauvegarde dans le repertoire du script sous le nom <hostname>.txt")
         print("\nOu lancez sans arguments pour le mode interactif:")
         print(f"python {sys.argv[0]}")
         sys.exit(1)
@@ -380,27 +380,27 @@ def main():
     
     
     try:
-        # Installer paramiko si nécessaire
+        # Installer paramiko si necessaire
         if not install_paramiko():
-            print("❌ Impossible d'installer paramiko. Veuillez l'installer manuellement:")
+            print("? Impossible d'installer paramiko. Veuillez l'installer manuellement:")
             print("pip install paramiko")
             sys.exit(1)
         
-        # Se connecter et récupérer la configuration
-        print(f"🎯 Cible: {switch_ip} via Rebond {rebond_ip}")
+        # Se connecter et recuperer la configuration
+        print(f"?? Cible: {switch_ip} via Rebond {rebond_ip}")
         config = connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ip, switch_user, switch_pass)
         
         # Sauvegarder la configuration
         filepath = save_configuration(config, switch_ip, output_dir)
         
-        print("✅ Récupération terminée avec succès!")
-        print(f"📄 Fichier généré: {filepath}")
+        print("? Recuperation terminee avec succes!")
+        print(f"?? Fichier genere: {filepath}")
         
     except KeyboardInterrupt:
-        print("\n⚠️  Opération annulée par l'utilisateur")
+        print("\n??  Operation annulee par l'utilisateur")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        print(f"? Erreur: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

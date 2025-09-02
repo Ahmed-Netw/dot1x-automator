@@ -1045,10 +1045,10 @@ set vlans default vlan-id 1`;
                 {!connectionStatus.isConnected ? (
                   <Button 
                     onClick={handleConnect}
-                    disabled={isConnecting || !isDesktopApp}
+                    disabled={isConnecting}
                     className="flex-1"
                   >
-                    {!isDesktopApp ? "Disponible uniquement en mode desktop" : 
+                    {!isDesktopApp ? "Mode simulation (web)" : 
                      isConnecting ? "Connexion en cours..." : "Se connecter"}
                   </Button>
                 ) : (

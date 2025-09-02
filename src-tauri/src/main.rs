@@ -9,6 +9,9 @@ use thrussh::*;
 use thrussh_keys::*;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
+use std::process::Command;
+use std::fs;
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConnectionCredentials {
@@ -26,6 +29,7 @@ struct ConnectionResult {
     message: String,
     configuration: Option<String>,
     hostname: Option<String>,
+    execution_logs: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -138,6 +142,7 @@ async fn connect_to_device(credentials: ConnectionCredentials) -> Result<Connect
                         message: format!("Configuration récupérée avec succès du switch {}", hostname),
                         configuration: Some(output),
                         hostname: Some(hostname),
+                        execution_logs: None,
                     })
                 }
                 Ok(false) => {
@@ -163,6 +168,144 @@ fn extract_hostname(config: &str) -> String {
         }
     }
     "Unknown".to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct RebondCredentials {
+    rebond_ip: String,
+    rebond_username: String,
+    rebond_password: String,
+    switch_ip: String,
+    switch_username: String,
+    switch_password: String,
+}
+
+#[tauri::command]
+async fn run_rebond_script(credentials: RebondCredentials) -> Result<ConnectionResult, String> {
+    println!("Executing rebond script with credentials: {:?}", credentials);
+    
+    // Embed the Python script
+    let script_content = include_str!("../../../public/scripts/rebond_fetch_config.py");
+    
+    // Create a temporary directory for the script
+    let temp_dir = std::env::temp_dir();
+    let script_path = temp_dir.join("rebond_fetch_config.py");
+    
+    // Write the script to temp file
+    fs::write(&script_path, script_content)
+        .map_err(|e| format!("Failed to write script to temp file: {}", e))?;
+    
+    // Try different Python executables
+    let python_executables = if cfg!(target_os = "windows") {
+        vec!["python", "python3", "py"]
+    } else {
+        vec!["python3", "python"]
+    };
+    
+    let mut last_error = String::new();
+    let mut execution_logs = String::new();
+    
+    for python_exe in python_executables {
+        println!("Trying Python executable: {}", python_exe);
+        
+        let mut cmd = Command::new(python_exe);
+        cmd.arg(&script_path)
+           .arg(&credentials.rebond_ip)
+           .arg(&credentials.rebond_username)
+           .arg(&credentials.rebond_password)
+           .arg(&credentials.switch_ip)
+           .arg(&credentials.switch_username)
+           .arg(&credentials.switch_password);
+        
+        match cmd.output() {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                
+                // Capture execution logs for debugging
+                execution_logs.push_str(&format!("=== Execution avec {} ===\n", python_exe));
+                execution_logs.push_str(&format!("STDOUT:\n{}\n", stdout));
+                if !stderr.is_empty() {
+                    execution_logs.push_str(&format!("STDERR:\n{}\n", stderr));
+                }
+                execution_logs.push_str(&format!("Exit Status: {}\n\n", output.status));
+                
+                println!("Python stdout: {}", stdout);
+                if !stderr.is_empty() {
+                    println!("Python stderr: {}", stderr);
+                }
+                
+                // Look for the success message and file path
+                if stdout.contains("✅ Récupération terminée avec succès!") || stdout.contains("📄 Fichier généré:") {
+                    // Extract the file path from the output
+                    let mut file_path: Option<String> = None;
+                    
+                    for line in stdout.lines() {
+                        if line.contains("📁 Configuration sauvegardée:") {
+                            if let Some(path) = line.split("📁 Configuration sauvegardée:").nth(1) {
+                                file_path = Some(path.trim().to_string());
+                                break;
+                            }
+                        } else if line.contains("📄 Fichier généré:") {
+                            if let Some(path) = line.split("📄 Fichier généré:").nth(1) {
+                                file_path = Some(path.trim().to_string());
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if let Some(path) = file_path {
+                        // Read the configuration file
+                        match fs::read_to_string(&path) {
+                            Ok(config_content) => {
+                                let hostname = extract_hostname(&config_content);
+                                
+                                // Clean up temp script
+                                let _ = fs::remove_file(&script_path);
+                                
+                                return Ok(ConnectionResult {
+                                    success: true,
+                                    message: format!("Configuration récupérée avec succès du switch {}", hostname),
+                                    configuration: Some(config_content),
+                                    hostname: Some(hostname),
+                                    execution_logs: Some(execution_logs),
+                                });
+                            }
+                            Err(e) => {
+                                last_error = format!("Failed to read configuration file {}: {}", path, e);
+                                continue;
+                            }
+                        }
+                    } else {
+                        last_error = "Script executed but could not find output file path".to_string();
+                        continue;
+                    }
+                } else {
+                    last_error = format!("Script failed. Stdout: {} Stderr: {}", stdout, stderr);
+                    continue;
+                }
+            }
+            Err(e) => {
+                last_error = format!("Failed to execute {}: {}", python_exe, e);
+                continue;
+            }
+        }
+    }
+    
+    // Clean up temp script
+    let _ = fs::remove_file(&script_path);
+    
+    Err(format!(
+        "Échec de l'exécution du script Python avec tous les exécutables Python disponibles.\n\nLogs d'exécution:\n{}\n\nDernière erreur: {}",
+        execution_logs,
+        last_error
+    ))
+}
+
+// Alias for test_robont_connection to maintain consistency
+#[tauri::command]
+async fn test_rebond_connection(ip: String, username: String, password: String) -> Result<String, String> {
+    test_robont_connection(ip, username, password).await
 }
 
 #[tauri::command]
@@ -228,7 +371,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             connect_to_device, 
             ping_host, 
-            test_robont_connection
+            test_robont_connection,
+            run_rebond_script,
+            test_rebond_connection
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

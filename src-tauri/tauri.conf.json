@@ -69,11 +69,23 @@
       },
       "resources": [],
       "shortDescription": "Dot1x Automator",
-      "targets": "all",
+      "targets": ["app"],
       "windows": {
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
-        "timestampUrl": ""
+        "timestampUrl": "",
+        "nsis": {
+          "oneClick": false,
+          "allowToChangeInstallationDirectory": true,
+          "createDesktopShortcut": true,
+          "createStartMenuShortcut": true,
+          "languages": ["French", "English"],
+          "installerIcon": "icons/icon.ico",
+          "installMode": "both",
+          "allowElevation": false,
+          "perMachine": false,
+          "displayLanguageSelector": true
+        }
       }
     },
     "security": {

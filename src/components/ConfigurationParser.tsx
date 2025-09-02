@@ -3,6 +3,7 @@ interface Interface {
   config: string[];
   isAccess: boolean;
   description?: string;
+  vlan?: string;
 }
 
 interface SwitchInfo {
@@ -105,6 +106,14 @@ export class ConfigurationParser {
               }
             }
           }
+
+          // Extract VLAN membership
+          if (trimmed.includes('vlan members')) {
+            const vlanMatch = trimmed.match(/vlan members\s+(\S+)/);
+            if (vlanMatch) {
+              iface.vlan = vlanMatch[1];
+            }
+          }
           
           // Check if it's an access port - improved detection
           if (trimmed.includes('family ethernet-switching port-mode access') || 
@@ -176,11 +185,20 @@ export class ConfigurationParser {
     return result;
   }
 
+  private shouldExcludeInterface(iface: Interface): boolean {
+    return iface.description?.toLowerCase().includes('interco-orange') || false;
+  }
+
+  private shouldIncludeForCleanup(iface: Interface): boolean {
+    const targetVlans = ['VL2_BUREAUTIQUE_Filaire-Wifi', 'VL120_BUREAUTIQUE_Filaire-Wifi'];
+    return iface.isAccess && iface.vlan && targetVlans.includes(iface.vlan);
+  }
+
   generateDot1xConfig(interfaces: Interface[]): string {
     const configs: string[] = [];
     
     for (const iface of interfaces) {
-      if (iface.isAccess) {
+      if (iface.isAccess && !this.shouldExcludeInterface(iface)) {
         // Set description based on existing description
         if (iface.description) {
           // Don't duplicate "802.1x " prefix if it already exists
@@ -208,9 +226,9 @@ export class ConfigurationParser {
   generateDot1xConfigWildcard(interfaces: Interface[]): string {
     const configs: string[] = [];
     
-    // Separate interfaces with and without descriptions
-    const interfacesWithoutDesc = interfaces.filter(iface => iface.isAccess && !iface.description);
-    const interfacesWithDesc = interfaces.filter(iface => iface.isAccess && iface.description);
+    // Separate interfaces with and without descriptions, excluding INTERCO-ORANGE
+    const interfacesWithoutDesc = interfaces.filter(iface => iface.isAccess && !iface.description && !this.shouldExcludeInterface(iface));
+    const interfacesWithDesc = interfaces.filter(iface => iface.isAccess && iface.description && !this.shouldExcludeInterface(iface));
     
     // Generate wildcard ranges for interfaces without descriptions
     const groups = this.groupConsecutive(interfacesWithoutDesc);
@@ -240,8 +258,8 @@ export class ConfigurationParser {
       configs.push('');
     }
     
-    // Generate wildcard ranges for ALL access interfaces (dot1x settings)
-    const allGroups = this.groupConsecutive(interfaces.filter(iface => iface.isAccess));
+    // Generate wildcard ranges for ALL access interfaces (dot1x settings), excluding INTERCO-ORANGE
+    const allGroups = this.groupConsecutive(interfaces.filter(iface => iface.isAccess && !this.shouldExcludeInterface(iface)));
     
     for (const group of allGroups) {
       for (const range of group.ranges) {
@@ -269,7 +287,7 @@ export class ConfigurationParser {
     const configs: string[] = [];
     
     for (const iface of interfaces) {
-      if (iface.isAccess) {
+      if (this.shouldIncludeForCleanup(iface)) {
         // Remove MAC limit configurations
         configs.push(`delete ethernet-switching-options secure-access-port interface ${iface.name} mac-limit 3`);
         configs.push(`delete ethernet-switching-options secure-access-port interface ${iface.name} mac-limit action`);
@@ -281,7 +299,9 @@ export class ConfigurationParser {
 
   generateCleanupConfigWildcard(interfaces: Interface[]): string {
     const configs: string[] = [];
-    const groups = this.groupConsecutive(interfaces);
+    // Filter interfaces for cleanup (only VL2_BUREAUTIQUE_Filaire-Wifi and VL120_BUREAUTIQUE_Filaire-Wifi)
+    const cleanupInterfaces = interfaces.filter(iface => this.shouldIncludeForCleanup(iface));
+    const groups = this.groupConsecutive(cleanupInterfaces);
     
     for (const group of groups) {
       for (const range of group.ranges) {

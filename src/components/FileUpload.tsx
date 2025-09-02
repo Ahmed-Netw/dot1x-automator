@@ -109,3 +109,5 @@ export const FileUpload = ({ onFileRead }: FileUploadProps) => {
     </Card>
   );
 };
+
+export default FileUpload;

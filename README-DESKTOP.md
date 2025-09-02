@@ -15,22 +15,38 @@ Cette application a été transformée en application desktop native utilisant T
 
 ### Prérequis
 - Node.js et npm
-- Rust et Cargo
-- Tauri CLI
+- Rust et Cargo (https://rustup.rs/)
+- WebView2 Runtime (Windows 10/11)
+- C++ Build Tools (Visual Studio Build Tools)
 
-### Installation des dépendances
+### Installation rapide
 ```bash
+# 1. Installer les dépendances frontend
 npm install
+
+# 2. Installer Tauri CLI v1
+cargo install tauri-cli --version ^1.5
+
+# 3. Construire l'application
+npm run build
+
+# 4. Exécuter l'application
+.\src-tauri\target\release\dot1x-automator.exe
 ```
 
 ### Mode développement
 ```bash
-npm run tauri:dev
+# Développement avec hot reload
+npm run dev
 ```
 
 ### Compilation pour production
 ```bash
-npm run tauri:build
+# Build optimisé pour production
+npm run build
+
+# Build debug (plus rapide pour tests)
+npm run build:debug
 ```
 
 Ceci génère un exécutable dans `src-tauri/target/release/`

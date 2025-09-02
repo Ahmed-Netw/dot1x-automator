@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,10 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2, ChevronDown, ChevronRight, ExternalLink, Server, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
 import { FileUpload } from '@/components/FileUpload';
+import { bridgeClient } from '@/lib/bridge';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
 let tauriInvoke: any = null;
@@ -56,7 +57,32 @@ export default function DeviceConnection() {
   const [executionLogs, setExecutionLogs] = useState<string>('');
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   
+  // État pour le bridge server local
+  const [bridgeServerAvailable, setBridgeServerAvailable] = useState(false);
+  const [checkingBridge, setCheckingBridge] = useState(false);
+  
   const { toast } = useToast();
+
+  // Vérification périodique du bridge server
+  useEffect(() => {
+    checkBridgeServer();
+    
+    // Vérification toutes les 30 secondes
+    const interval = setInterval(checkBridgeServer, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkBridgeServer = async () => {
+    setCheckingBridge(true);
+    try {
+      const available = await bridgeClient.checkAvailability();
+      setBridgeServerAvailable(available);
+    } catch (error) {
+      setBridgeServerAvailable(false);
+    } finally {
+      setCheckingBridge(false);
+    }
+  };
 
   // Fonction pour extraire le hostname de la configuration
   const extractHostname = (configData: string): string => {
@@ -197,6 +223,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     try {
       if (tauriInvoke) {
+        // Mode desktop - utiliser Tauri
         const isReachable = await tauriInvoke('ping_host', { ip }) as boolean;
         toast({
           title: `Ping ${target}`,
@@ -205,11 +232,21 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
             `✗ ${ip} n'est pas accessible`,
           variant: isReachable ? "default" : "destructive"
         });
+      } else if (bridgeServerAvailable) {
+        // Mode bridge - utiliser le serveur local
+        const result = await bridgeClient.pingDevice(ip);
+        toast({
+          title: `Ping ${target}`,
+          description: result.success ? 
+            `✓ ${ip} est accessible` : 
+            `✗ ${result.error || 'Ping échoué'}`,
+          variant: result.success ? "default" : "destructive"
+        });
       } else {
-        // Mode web - simulation basique
+        // Mode simulation
         toast({
           title: "Mode simulation",
-          description: `Ping vers ${ip} - utilisez l'app desktop pour un vrai test`,
+          description: `Ping vers ${ip} - démarrez le bridge server pour un vrai test`,
         });
       }
     } catch (error: any) {
@@ -233,6 +270,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     try {
       if (tauriInvoke) {
+        // Mode desktop - utiliser Tauri
         const result = await tauriInvoke('test_rebond_connection', {
           ip: rebondServerIp,
           username: rebondUsername,
@@ -243,10 +281,20 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
           title: "Test de connexion",
           description: result,
         });
+      } else if (bridgeServerAvailable) {
+        // Mode bridge - utiliser le serveur local
+        const result = await bridgeClient.testConnection(rebondServerIp, rebondUsername, rebondPassword, 'juniper');
+        toast({
+          title: "Test de connexion",
+          description: result.success ? 
+            `✓ Connexion réussie vers ${result.data?.hostname || rebondServerIp}` : 
+            `✗ ${result.error || 'Test échoué'}`,
+          variant: result.success ? "default" : "destructive"
+        });
       } else {
         toast({
           title: "Mode simulation",
-          description: "Test de connexion Rebond - utilisez l'app desktop pour un vrai test",
+          description: "Test de connexion Rebond - démarrez le bridge server pour un vrai test",
         });
       }
     } catch (error: any) {
@@ -269,8 +317,115 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       return;
     }
 
-    // Mode simulation web - simuler le processus de connexion
-    if (!tauriInvoke) {
+    // 1. Mode Desktop (Tauri) - connexion réelle via Tauri
+    if (tauriInvoke) {
+      // ... keep existing code (desktop mode implementation)
+      setIsConnecting(true);
+      setConnectionStatus({ isConnected: false });
+      setConnectionStep(`Connexion au serveur Rebond ${rebondServerIp}...`);
+
+      try {
+        setConnectionStep("📦 Préparation du script Python...");
+        
+        const result = await tauriInvoke('run_rebond_script', {
+          rebond_ip: rebondServerIp,
+          rebond_username: rebondUsername,
+          rebond_password: rebondPassword,
+          switch_ip: switchIp,
+          switch_username: switchUsername,
+          switch_password: switchPassword,
+        }) as { success: boolean; message: string; configuration?: string; hostname?: string; execution_logs?: string };
+
+        if (result.success && result.configuration) {
+          setConfiguration(result.configuration);
+          setExtractedHostname(result.hostname || 'Unknown');
+          setExecutionLogs(result.execution_logs || '');
+          setConnectionStep("✓ Configuration récupérée avec succès");
+          setConnectionStatus({ isConnected: true });
+          
+          toast({
+            title: "Connexion réussie",
+            description: `Configuration du switch ${result.hostname} récupérée`,
+          });
+        } else {
+          setExecutionLogs(result.execution_logs || result.message || '');
+          throw new Error(result.message || 'Connexion échouée');
+        }
+      } catch (error: any) {
+        setConnectionStep(`❌ ${error.message || 'Erreur de connexion'}`);
+        setConnectionStatus({ 
+          isConnected: false, 
+          error: error.message || 'Erreur de connexion inconnue'
+        });
+        
+        toast({
+          title: "Connexion échouée",
+          description: error.message || 'Erreur de connexion',
+          variant: "destructive"
+        });
+      } finally {
+        setIsConnecting(false);
+      }
+      return;
+    }
+
+    // 2. Mode Bridge Server - connexion réelle via serveur local
+    if (bridgeServerAvailable) {
+      setIsConnecting(true);
+      setConnectionStatus({ isConnected: false });
+      
+      try {
+        setConnectionStep("🌉 Connexion via Bridge Server...");
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setConnectionStep("🔗 Récupération de la configuration...");
+        
+        const result = await bridgeClient.getConfiguration(
+          rebondServerIp,
+          rebondUsername,
+          rebondPassword,
+          switchIp,
+          switchUsername,
+          switchPassword
+        );
+
+        if (result.success && result.data) {
+          setConfiguration(result.data.configuration);
+          setExtractedHostname(result.data.hostname);
+          setExecutionLogs(result.data.logs);
+          setConnectionStep("✓ Configuration récupérée avec succès via Bridge");
+          setConnectionStatus({ 
+            isConnected: true,
+            message: "✅ Connexion réussie via Bridge Server"
+          });
+          
+          toast({
+            title: "Connexion réussie",
+            description: `Configuration récupérée via Bridge Server`,
+          });
+        } else {
+          throw new Error(result.error || 'Récupération échouée');
+        }
+      } catch (error: any) {
+        setConnectionStep(`❌ ${error.message || 'Erreur Bridge'}`);
+        setConnectionStatus({ 
+          isConnected: false, 
+          error: error.message || 'Erreur Bridge Server'
+        });
+        
+        toast({
+          title: "Erreur Bridge",
+          description: error.message || 'Erreur Bridge Server',
+          variant: "destructive"
+        });
+      } finally {
+        setIsConnecting(false);
+      }
+      return;
+    }
+
+    // 3. Mode Simulation - pas de connexion réelle
+    if (!tauriInvoke && !bridgeServerAvailable) {
       setIsConnecting(true);
       setConnectionStatus({ isConnected: false });
       
@@ -652,6 +807,107 @@ set vlans default vlan-id 1`;
         </Alert>
 
         <DesktopCompiler isDesktopApp={isDesktopApp} />
+
+        {/* Bridge Server Local */}
+        {!isDesktopApp && (
+          <Card className="border-l-4 border-l-primary">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Server className="h-5 w-5 text-primary" />
+                Serveur Bridge Local
+                <Badge variant={bridgeServerAvailable ? "default" : "destructive"} className="ml-auto">
+                  {checkingBridge ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <div className={`h-2 w-2 rounded-full mr-1 ${bridgeServerAvailable ? 'bg-green-500' : 'bg-red-500'}`} />
+                  )}
+                  {bridgeServerAvailable ? 'Online' : 'Offline'}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                {bridgeServerAvailable 
+                  ? "Bridge Server actif - Connexions SSH réelles disponibles"
+                  : "Démarrez le Bridge Server pour activer les connexions SSH réelles"
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!bridgeServerAvailable ? (
+                <div className="bg-muted p-4 rounded-lg space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-warning" />
+                    <strong>Configuration du Bridge Server</strong>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <p><strong>1. Ouvrir un terminal et naviguer vers le dossier du projet</strong></p>
+                    <code className="block bg-background p-2 rounded border text-xs font-mono">
+                      cd bridge-server
+                    </code>
+                    
+                    <p><strong>2. Installer les dépendances Python</strong></p>
+                    <code className="block bg-background p-2 rounded border text-xs font-mono">
+                      pip install -r requirements.txt
+                    </code>
+                    
+                    <p><strong>3. Démarrer le serveur bridge</strong></p>
+                    <code className="block bg-background p-2 rounded border text-xs font-mono">
+                      python bridge_server.py
+                    </code>
+                    
+                    <p className="text-muted-foreground">
+                      Le serveur sera accessible sur <strong>http://127.0.0.1:5001</strong>
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={checkBridgeServer}
+                      disabled={checkingBridge}
+                    >
+                      {checkingBridge ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                      )}
+                      Vérifier
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open('http://127.0.0.1:5001/docs', '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      API Docs
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-700 mb-2">
+                    <div className="h-2 w-2 bg-green-500 rounded-full" />
+                    <strong>Bridge Server actif</strong>
+                  </div>
+                  <p className="text-sm text-green-600">
+                    Connexions SSH réelles activées via http://127.0.0.1:5001
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open('http://127.0.0.1:5001/docs', '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      API Docs
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 gap-6">
           {/* Script externe */}
@@ -1119,8 +1375,10 @@ set vlans default vlan-id 1`;
                     disabled={isConnecting}
                     className="flex-1"
                   >
-                    {!isDesktopApp ? "Mode simulation (web)" : 
-                     isConnecting ? "Connexion en cours..." : "Se connecter"}
+                    {isConnecting ? "Connexion en cours..." : 
+                     isDesktopApp ? "Se connecter (Desktop SSH)" :
+                     bridgeServerAvailable ? "Se connecter (Bridge SSH)" : 
+                     "Mode simulation (web)"}
                   </Button>
                 ) : (
                   <Button 

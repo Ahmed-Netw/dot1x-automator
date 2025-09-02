@@ -1,6 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Router, Network, Activity, Users, Download, Monitor } from "lucide-react";
+import { Router, Network, Activity, Users } from "lucide-react";
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt';
 
 const Dashboard = () => {
@@ -77,42 +76,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Monitor className="h-5 w-5" />
-              Application Desktop
-            </CardTitle>
-            <CardDescription>
-              Téléchargez l'application native pour Windows
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              <p>✅ Connexions SSH réelles</p>
-              <p>✅ Aucune installation requise</p>
-              <p>✅ Fonctionne hors ligne</p>
-            </div>
-            <Button 
-              className="w-full" 
-              onClick={() => {
-                // Créer un lien vers le fichier de build guide qui contient les instructions
-                const link = document.createElement('a');
-                link.href = '/BUILD-GUIDE.md';
-                link.download = 'BUILD-GUIDE.md';
-                link.click();
-              }}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Télécharger Guide de Construction
-            </Button>
-            <p className="text-xs text-muted-foreground text-center">
-              Suivez les instructions pour compiler votre .exe portable
-            </p>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Connexions Récentes</CardTitle>

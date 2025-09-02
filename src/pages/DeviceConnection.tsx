@@ -6,11 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2 } from 'lucide-react';
+import { Terminal, Network, Lock, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
-import { FileUpload } from '@/components/FileUpload';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
 let tauriInvoke: any = null;
@@ -26,13 +24,10 @@ interface ConnectionStatus {
 }
 
 export default function DeviceConnection() {
-  // Force recompilation - all "robont" references changed to "rebond"
-  console.log('DeviceConnection loaded with rebond variables');
-  
-  // Serveur rebond (IP fixe selon le script)
-  const [rebondServerIp] = useState('6.91.128.111');
-  const [rebondUsername, setRebondUsername] = useState('');
-  const [rebondPassword, setRebondPassword] = useState('');
+  // Serveur robont (IP fixe selon le script)
+  const [robontServerIp] = useState('6.91.128.111');
+  const [robontUsername, setRobontUsername] = useState('');
+  const [robontPassword, setRobontPassword] = useState('');
   
   // Switch cible
   const [switchIp, setSwitchIp] = useState('');
@@ -44,14 +39,6 @@ export default function DeviceConnection() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ isConnected: false });
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStep, setConnectionStep] = useState<string>('');
-  
-  // État pour le script externe
-  const [scriptConfigPath, setScriptConfigPath] = useState('C:\\Configurations');
-  const [availableConfigs, setAvailableConfigs] = useState<string[]>([]);
-  const [selectedConfigFile, setSelectedConfigFile] = useState<string>('');
-  const [configFileContent, setConfigFileContent] = useState<string>('');
-  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
-  
   const { toast } = useToast();
 
   // Fonction pour extraire le hostname de la configuration
@@ -80,7 +67,7 @@ export default function DeviceConnection() {
     const hostname = `SW-${switchIp.replace(/\./g, '-')}`;
     
     return `# Configuration récupérée le ${timestamp}
-# Serveur Rebond: ${rebondServerIp}
+# Serveur Robont: ${robontServerIp}
 # Switch IP: ${switchIp}
 # Switch Hostname: ${hostname}
 # Commande: show configuration | display set | no-more
@@ -179,8 +166,8 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 # Timestamp de fin: ${new Date().toLocaleString('fr-FR')}`;
   };
 
-  const handlePing = async (target: 'rebond' | 'switch') => {
-    const ip = target === 'rebond' ? rebondServerIp : switchIp;
+  const handlePing = async (target: 'robont' | 'switch') => {
+    const ip = target === 'robont' ? robontServerIp : switchIp;
     
     if (!ip) {
       toast({
@@ -217,11 +204,11 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     }
   };
 
-  const handleTestRebond = async () => {
-    if (!rebondUsername || !rebondPassword) {
+  const handleTestRobont = async () => {
+    if (!robontUsername || !robontPassword) {
       toast({
         title: "Champs manquants",
-        description: "Veuillez saisir les identifiants du serveur Rebond",
+        description: "Veuillez saisir les identifiants du serveur Robont",
         variant: "destructive"
       });
       return;
@@ -229,10 +216,10 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     try {
       if (tauriInvoke) {
-        const result = await tauriInvoke('test_rebond_connection', {
-          ip: rebondServerIp,
-          username: rebondUsername,
-          password: rebondPassword
+        const result = await tauriInvoke('test_robont_connection', {
+          ip: robontServerIp,
+          username: robontUsername,
+          password: robontPassword
         }) as string;
         
         toast({
@@ -242,7 +229,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       } else {
         toast({
           title: "Mode simulation",
-          description: "Test de connexion Rebond - utilisez l'app desktop pour un vrai test",
+          description: "Test de connexion Robont - utilisez l'app desktop pour un vrai test",
         });
       }
     } catch (error: any) {
@@ -258,7 +245,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     // Validation IP basique
     const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
     
-    if (!rebondUsername || !rebondPassword || !switchIp || !switchUsername) {
+    if (!robontUsername || !robontPassword || !switchIp || !switchUsername) {
       toast({
         title: "Erreur de saisie",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -278,16 +265,16 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     setIsConnecting(true);
     setConnectionStatus({ isConnected: false });
-    setConnectionStep(`Connexion au serveur Rebond ${rebondServerIp}...`);
+    setConnectionStep(`Connexion au serveur Robont ${robontServerIp}...`);
 
     try {
       // Essayer d'utiliser Tauri si disponible, sinon mode simulation
       if (tauriInvoke) {
         const result = await tauriInvoke('connect_to_device', {
           credentials: {
-            rebond_ip: rebondServerIp,
-            rebond_username: rebondUsername,
-            rebond_password: rebondPassword,
+            robont_ip: robontServerIp,
+            robont_username: robontUsername,
+            robont_password: robontPassword,
             switch_ip: switchIp,
             switch_username: switchUsername,
             switch_password: switchPassword,
@@ -309,7 +296,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
         }
       } else {
         // Mode simulation pour le navigateur web
-        setConnectionStep("✓ Connexion établie avec le serveur Rebond");
+        setConnectionStep("✓ Connexion établie avec le serveur Robont");
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         setConnectionStep(`Connexion SSH au switch ${switchIp}...`);
@@ -359,7 +346,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     setConnectionStep('');
     toast({
       title: "Déconnecté",
-      description: "Sessions fermées (serveur Rebond et switch)",
+      description: "Sessions fermées (serveur Robont et switch)",
     });
   };
 
@@ -383,195 +370,15 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     });
   };
 
-  // Fonctions pour le script externe
-  const downloadPythonScript = () => {
-    const scriptContent = `#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Script de récupération de configuration via serveur Rebond
-Téléchargé depuis l'application Network Management Tools
-"""
-# Le contenu complet du script est disponible dans public/scripts/rebond_fetch_config.py
-`;
-
-    // Télécharger le script depuis le dossier public
-    fetch('/scripts/rebond_fetch_config.py')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Script non trouvé');
-        }
-        return response.text();
-      })
-      .then(content => {
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'rebond_fetch_config.py';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        toast({
-          title: "Script téléchargé",
-          description: "rebond_fetch_config.py sauvegardé sur votre ordinateur",
-        });
-      })
-      .catch(error => {
-        toast({
-          title: "Erreur de téléchargement",
-          description: "Impossible de télécharger le script Python",
-          variant: "destructive"
-        });
-      });
-  };
-
-  const browseFolderForConfigs = async () => {
-    if (!tauriInvoke) {
-      toast({
-        title: "Fonction desktop uniquement",
-        description: "La sélection de dossier nécessite l'application desktop",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const folderPath = await tauriInvoke('select_folder');
-      if (folderPath) {
-        setScriptConfigPath(folderPath);
-        toast({
-          title: "Dossier sélectionné",
-          description: `Dossier: ${folderPath}`,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de sélectionner le dossier",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const listTxtFiles = async () => {
-    setIsLoadingConfigs(true);
-    try {
-      if (tauriInvoke) {
-        // Mode desktop - lister les fichiers réels
-        const files = await tauriInvoke('list_txt_files', { path: scriptConfigPath }) as string[];
-        setAvailableConfigs(files);
-        
-        toast({
-          title: "Fichiers listés",
-          description: `${files.length} fichier(s) .txt trouvé(s)`,
-        });
-      } else {
-        // Mode web - simulation
-        const simulatedFiles = [
-          'SW-192-168-1-10_20241201_143022.txt',
-          'SW-Core-Main_20241201_142055.txt',
-          'switch_10_0_1_1_20241201_141230.txt'
-        ];
-        setAvailableConfigs(simulatedFiles);
-        
-        toast({
-          title: "Mode simulation",
-          description: `${simulatedFiles.length} fichiers simulés affichés`,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de lister les fichiers",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingConfigs(false);
-    }
-  };
-
-  const loadConfigFile = async (filename: string) => {
-    if (!filename) return;
-
-    try {
-      if (tauriInvoke) {
-        // Mode desktop - lire le fichier réel
-        const content = await tauriInvoke('read_txt_file', { 
-          path: scriptConfigPath,
-          filename: filename
-        }) as string;
-        
-        setConfigFileContent(content);
-        setSelectedConfigFile(filename);
-        
-        toast({
-          title: "Fichier chargé",
-          description: `Configuration de ${filename}`,
-        });
-      } else {
-        // Mode web - contenu simulé
-        const mockContent = `# Configuration récupérée le 2024-12-01 14:30:22
-# Switch IP: 192.168.1.10
-# Hostname: ${filename.split('_')[0]}
-# Commande: show configuration | display set | no-more
-# Récupéré via serveur Rebond
-#==================================================
-
-set version 20.4R3.8
-set system host-name ${filename.split('_')[0]}
-set system domain-name company.local
-set system time-zone Europe/Paris
-set interfaces me0 unit 0 family inet address 192.168.1.10/24
-set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access
-set vlans default vlan-id 1`;
-        
-        setConfigFileContent(mockContent);
-        setSelectedConfigFile(filename);
-        
-        toast({
-          title: "Mode simulation",
-          description: `Contenu simulé pour ${filename}`,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de lire le fichier",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleFileUpload = (content: string, filename: string) => {
-    if (!filename.toLowerCase().endsWith('.txt')) {
-      toast({
-        title: "Format non supporté",
-        description: "Seuls les fichiers .txt sont acceptés",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setConfigFileContent(content);
-    setSelectedConfigFile(filename);
-    
-    toast({
-      title: "Fichier importé",
-      description: `Configuration de ${filename} importée`,
-    });
-  };
-
   const isDesktopApp = Boolean((window as any).__TAURI__);
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <header className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-primary">Connexion SSH aux Équipements</h1>
           <p className="text-muted-foreground">
-            Connexion via serveur Rebond (6.91.128.111) vers switches réseau
+            Connexion via serveur Robont (6.91.128.111) vers switches réseau
           </p>
         </header>
 
@@ -579,202 +386,63 @@ set vlans default vlan-id 1`;
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             <strong>Mode:</strong> {isDesktopApp ? 'Application Desktop Native - SSH Réel' : 'Application Web - Mode Simulation'}<br/>
-            <strong>Architecture:</strong> Serveur Rebond (6.91.128.111) → Switch cible<br/>
+            <strong>Architecture:</strong> Serveur Robont (6.91.128.111) → Switch cible<br/>
             <strong>Commande exécutée:</strong> show configuration | display set | no-more
           </AlertDescription>
         </Alert>
 
         <DesktopCompiler isDesktopApp={isDesktopApp} />
 
-        <div className="grid grid-cols-1 gap-6">
-          {/* Script externe */}
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5 text-accent-foreground" />
-                Script externe
-              </CardTitle>
-              <CardDescription>
-                Télécharger le script Python et gérer les fichiers de configuration
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 space-y-4">
-              {/* Téléchargement du script */}
-              <div className="space-y-2">
-                <Label>Script Python</Label>
-                <Button
-                  variant="outline"
-                  onClick={downloadPythonScript}
-                  className="w-full justify-start gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Télécharger rebond_fetch_config.py
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Usage: python rebond_fetch_config.py rebond_ip rebond_user rebond_pass switch_ip switch_user switch_pass output_dir
-                </p>
-              </div>
-
-              {/* Configuration du dossier de sortie */}
-              <div className="space-y-2">
-                <Label htmlFor="config-path">Dossier des configurations .txt</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="config-path"
-                    value={scriptConfigPath}
-                    onChange={(e) => setScriptConfigPath(e.target.value)}
-                    placeholder="C:\Configurations"
-                  />
-                  {isDesktopApp && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={browseFolderForConfigs}
-                      title="Parcourir..."
-                    >
-                      <FolderOpen className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Lister les fichiers .txt */}
-              <Button
-                variant="outline"
-                onClick={listTxtFiles}
-                disabled={isLoadingConfigs}
-                className="w-full justify-start gap-2"
-              >
-                {isLoadingConfigs ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4" />
-                )}
-                {isLoadingConfigs ? "Chargement..." : "Lister les fichiers .txt"}
-              </Button>
-
-              {/* Sélection de fichier */}
-              {availableConfigs.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Fichiers de configuration disponibles</Label>
-                  <Select value={selectedConfigFile} onValueChange={loadConfigFile}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un fichier .txt" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableConfigs.map((file, index) => (
-                        <SelectItem key={index} value={file}>
-                          {file}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Import manuel en mode web */}
-              {!isDesktopApp && (
-                <div className="space-y-2">
-                  <Label>Ou importer un fichier .txt manuellement</Label>
-                  <FileUpload onFileRead={handleFileUpload} />
-                </div>
-              )}
-
-              {/* Affichage du contenu du fichier sélectionné */}
-              {configFileContent && (
-                <div className="space-y-2">
-                  <Label>Contenu de {selectedConfigFile}</Label>
-                  <Textarea
-                    value={configFileContent}
-                    readOnly
-                    className="min-h-48 font-mono text-xs bg-muted/50"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        navigator.clipboard.writeText(configFileContent);
-                        toast({
-                          title: "Copié !",
-                          description: "Configuration copiée dans le presse-papiers",
-                        });
-                      }}
-                    >
-                      Copier
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const blob = new Blob([configFileContent], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = selectedConfigFile || 'configuration.txt';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                      }}
-                    >
-                      Télécharger
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Formulaire de connexion */}
-          <Card className="h-full flex flex-col">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Network className="h-5 w-5 text-primary" />
-                Connexion via Serveur Rebond
+                Connexion via Serveur Robont
               </CardTitle>
               <CardDescription>
-                Connexion SSH : Serveur Rebond (6.91.128.111) → Switch cible
+                Connexion SSH : Serveur Robont (6.91.128.111) → Switch cible
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 space-y-6">
-              {/* Section Serveur Rebond */}
+            <CardContent className="space-y-6">
+              {/* Section Serveur Robont */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-secondary-foreground">
                   <div className="w-2 h-2 rounded-full bg-secondary-foreground"></div>
-                  Serveur Rebond (IP fixe)
+                  Serveur Robont (IP fixe)
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="rebond-ip">Adresse IP</Label>
+                    <Label htmlFor="robont-ip">Adresse IP</Label>
                     <Input
-                      id="rebond-ip"
-                      value={rebondServerIp}
+                      id="robont-ip"
+                      value={robontServerIp}
                       disabled
                       className="bg-muted"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="rebond-username">Utilisateur *</Label>
+                    <Label htmlFor="robont-username">Utilisateur *</Label>
                     <Input
-                      id="rebond-username"
+                      id="robont-username"
                       placeholder="Nom d'utilisateur serveur"
-                      value={rebondUsername}
-                      onChange={(e) => setRebondUsername(e.target.value)}
+                      value={robontUsername}
+                      onChange={(e) => setRobontUsername(e.target.value)}
                       disabled={connectionStatus.isConnected}
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="rebond-password">Mot de passe *</Label>
+                    <Label htmlFor="robont-password">Mot de passe *</Label>
                     <Input
-                      id="rebond-password"
+                      id="robont-password"
                       type="password"
-                      placeholder="Mot de passe serveur Rebond"
-                      value={rebondPassword}
-                      onChange={(e) => setRebondPassword(e.target.value)}
+                      placeholder="Mot de passe serveur Robont"
+                      value={robontPassword}
+                      onChange={(e) => setRobontPassword(e.target.value)}
                       disabled={connectionStatus.isConnected}
                     />
                   </div>
@@ -831,15 +499,15 @@ set vlans default vlan-id 1`;
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => handlePing('rebond')}
+                    onClick={() => handlePing('robont')}
                     className="flex-1"
                   >
-                    Ping Rebond
+                    Ping Robont
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={handleTestRebond}
+                    onClick={handleTestRobont}
                     className="flex-1"
                   >
                     Test Connexion
@@ -854,35 +522,13 @@ set vlans default vlan-id 1`;
                 >
                   Ping Switch ({switchIp || 'IP non saisie'})
                 </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}" "C:\\Configurations"`;
-                    navigator.clipboard.writeText(command);
-                    toast({
-                      title: "Commande copiée",
-                      description: "La commande CLI a été copiée dans le presse-papier"
-                    });
-                  }}
-                  disabled={!rebondUsername || !rebondPassword || !switchIp || !switchUsername}
-                  className="w-full"
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copier la commande CLI
-                </Button>
-                
-                <p className="text-xs text-muted-foreground">
-                  💡 <strong>Prérequis:</strong> sshpass doit être installé sur le serveur Rebond
-                </p>
               </div>
 
               
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  Connexion SSH sécurisée via serveur Rebond → show configuration | display set | no-more
+                  Connexion SSH sécurisée via serveur Robont → show configuration | display set | no-more
                 </span>
               </div>
               {isConnecting && connectionStep && (
@@ -914,7 +560,7 @@ set vlans default vlan-id 1`;
               {connectionStatus.isConnected && (
                 <div className="space-y-2">
                   <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                    Rebond: {rebondServerIp}
+                    Robont: {robontServerIp}
                   </Badge>
                   <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
                     Switch: {switchIp}
@@ -930,7 +576,7 @@ set vlans default vlan-id 1`;
           </Card>
 
           {/* Affichage de la configuration */}
-          <Card className="h-full flex flex-col">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Terminal className="h-5 w-5 text-secondary-foreground" />
@@ -940,7 +586,7 @@ set vlans default vlan-id 1`;
                 Résultat de "show configuration | display set | no-more"
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1">
+            <CardContent>
               {configuration ? (
                 <div className="space-y-4">
                   <Textarea
@@ -977,7 +623,6 @@ set vlans default vlan-id 1`;
               )}
             </CardContent>
           </Card>
-
         </div>
       </div>
     </div>

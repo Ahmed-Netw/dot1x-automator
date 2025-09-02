@@ -1,10 +1,7 @@
 {
   "scripts": {
-    "dev": "cargo tauri dev",
-    "build": "cargo tauri build",
-    "build:debug": "cargo tauri build --debug",
-    "tauri:dev": "cargo tauri dev",
-    "tauri:build": "cargo tauri build",
-    "tauri:build-debug": "cargo tauri build --debug"
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build-debug": "tauri build --debug"
   }
 }

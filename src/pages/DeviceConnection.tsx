@@ -6,9 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Terminal, Network, Lock, AlertTriangle } from 'lucide-react';
+import { Terminal, Network, Lock, AlertTriangle, HelpCircle, Settings, CheckCircle2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
+import PrerequisitesWizard from '@/components/PrerequisitesWizard';
+import SystemPrechecks from '@/components/SystemPrechecks';
+import HelpSection from '@/components/HelpSection';
+import DetailedLogger from '@/components/DetailedLogger';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
 let tauriInvoke: any = null;
@@ -40,6 +44,11 @@ export default function DeviceConnection() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStep, setConnectionStep] = useState<string>('');
   const { toast } = useToast();
+  
+  // États pour les nouveaux composants
+  const [showPrerequisitesWizard, setShowPrerequisitesWizard] = useState(false);
+  const [showHelpSection, setShowHelpSection] = useState(false);
+  const [showDetailedLogger, setShowDetailedLogger] = useState(false);
 
   // Fonction pour extraire le hostname de la configuration
   const extractHostname = (configData: string): string => {
@@ -393,7 +402,51 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
         <DesktopCompiler isDesktopApp={isDesktopApp} />
 
+        {/* Boutons d'assistance */}
+        <div className="flex flex-wrap gap-3 justify-center">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowPrerequisitesWizard(true)}
+            className="flex items-center gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            Assistant d'Installation
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => setShowHelpSection(true)}
+            className="flex items-center gap-2"
+          >
+            <HelpCircle className="h-4 w-4" />
+            Centre d'Aide
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => setShowDetailedLogger(!showDetailedLogger)}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            Journal d'Activité
+          </Button>
+        </div>
+
+        {/* Journal d'activité détaillé */}
+        {showDetailedLogger && (
+          <DetailedLogger 
+            isVisible={showDetailedLogger}
+            onToggle={() => setShowDetailedLogger(!showDetailedLogger)}
+          />
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Composant de pré-vérifications */}
+          <SystemPrechecks 
+            isDesktopApp={isDesktopApp}
+            robontServerIp={robontServerIp}
+            switchIp={switchIp}
+          />
           {/* Formulaire de connexion */}
           <Card>
             <CardHeader>
@@ -624,6 +677,20 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
             </CardContent>
           </Card>
         </div>
+
+        {/* Modales */}
+        {showPrerequisitesWizard && (
+          <PrerequisitesWizard
+            isDesktopApp={isDesktopApp}
+            onClose={() => setShowPrerequisitesWizard(false)}
+          />
+        )}
+        
+        {showHelpSection && (
+          <HelpSection
+            onClose={() => setShowHelpSection(false)}
+          />
+        )}
       </div>
     </div>
   );

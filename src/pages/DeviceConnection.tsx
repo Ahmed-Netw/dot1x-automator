@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
 import { FileUpload } from '@/components/FileUpload';
@@ -52,6 +53,7 @@ export default function DeviceConnection() {
   const [configFileContent, setConfigFileContent] = useState<string>('');
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
   const [executionLogs, setExecutionLogs] = useState<string>('');
+  const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -717,6 +719,160 @@ set vlans default vlan-id 1`;
                   </div>
                 </div>
               )}
+
+              {/* Guide d'installation et d'utilisation locale */}
+              <div className="border-t pt-4 mt-6">
+                <Collapsible open={isInstallGuideOpen} onOpenChange={setIsInstallGuideOpen}>
+                  <CollapsibleTrigger className="flex items-center gap-2 w-full hover:bg-muted/50 p-2 rounded transition-colors">
+                    {isInstallGuideOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                    <span className="font-medium text-sm">Guide d'installation et d'utilisation locale</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-6 pt-4">
+                    {/* Section Exécutable Portable */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        🖥️ Exécutable Portable (Windows)
+                      </h4>
+                      <div className="bg-muted/30 p-3 rounded-lg space-y-3 text-sm">
+                        <div>
+                          <h5 className="font-medium mb-2">Prérequis :</h5>
+                          <ul className="list-disc ml-4 space-y-1 text-xs">
+                            <li>Node.js (https://nodejs.org)</li>
+                            <li>Rust : <code>winget install Rustlang.Rustup</code></li>
+                            <li>Visual Studio Build Tools</li>
+                            <li>WebView2 (pré-installé sur Windows 11)</li>
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium mb-2">Étapes de construction :</h5>
+                          <div className="space-y-2">
+                            {[
+                              'npm install',
+                              'cargo install tauri-cli --version ^1.5',
+                              'npm run build',
+                              '.\\src-tauri\\target\\release\\dot1x-automator.exe'
+                            ].map((cmd, index) => (
+                              <div key={index} className="flex items-center gap-2 p-2 bg-background rounded border">
+                                <code className="flex-1 text-xs font-mono">{cmd}</code>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(cmd);
+                                    toast({
+                                      title: "Copié !",
+                                      description: "Commande copiée dans le presse-papiers"
+                                    });
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 dark:border-green-800">
+                          <span className="text-xs">✅ Aucune installation requise - Copiez simplement le .exe!</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open('/BUILD-GUIDE.md', '_blank')}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section Script Python */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        🐍 Script Python (Windows/Mac/Linux)
+                      </h4>
+                      <div className="bg-muted/30 p-3 rounded-lg space-y-3 text-sm">
+                        <div>
+                          <h5 className="font-medium mb-2">Prérequis :</h5>
+                          <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                            <code className="flex-1 text-xs font-mono">python --version</code>
+                            <span className="text-xs text-muted-foreground">(Python 3.6+)</span>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h5 className="font-medium mb-2">Utilisation interactive :</h5>
+                          <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                            <code className="flex-1 text-xs font-mono">python .\\rebond_fetch_config.py</code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                navigator.clipboard.writeText('python .\\rebond_fetch_config.py');
+                                toast({
+                                  title: "Copié !",
+                                  description: "Commande copiée dans le presse-papiers"
+                                });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Le script demandera les paramètres interactivement</p>
+                        </div>
+
+                        <div>
+                          <h5 className="font-medium mb-2">Avec arguments :</h5>
+                          {rebondUsername && rebondPassword && switchIp && switchUsername ? (
+                            <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                              <code className="flex-1 text-xs font-mono break-all">
+                                python rebond_fetch_config.py {rebondServerIp} "{rebondUsername}" "***" {switchIp} "{switchUsername}" "{switchPassword ? '***' : ''}"
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const fullCmd = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;
+                                  navigator.clipboard.writeText(fullCmd);
+                                  toast({
+                                    title: "Commande complète copiée !",
+                                    description: "Commande avec vos paramètres copiée"
+                                  });
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="p-2 bg-yellow-50 dark:bg-yellow-950/30 rounded border border-yellow-200 dark:border-yellow-800">
+                              <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                                ⚠️ Remplissez les champs Rebond et Switch pour générer la commande complète
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-800">
+                            <p className="text-xs text-blue-800 dark:text-blue-200">
+                              💡 <strong>Important :</strong> sshpass doit être installé sur le serveur Rebond
+                            </p>
+                          </div>
+                          <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 dark:border-green-800">
+                            <p className="text-xs text-green-800 dark:text-green-200">
+                              📁 Le fichier .txt sera sauvé dans le même dossier que le script
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
             </CardContent>
           </Card>
 

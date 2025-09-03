@@ -21,33 +21,32 @@ try {
 } catch (e) {
   console.log('Tauri non disponible, mode web');
 }
-
 interface ConnectionStatus {
   isConnected: boolean;
   error?: string;
   message?: string;
 }
-
 export default function DeviceConnection() {
   // Force recompilation - all "robont" references changed to "rebond"
   console.log('DeviceConnection loaded with rebond variables');
-  
+
   // Serveur rebond (IP fixe selon le script)
   const [rebondServerIp] = useState('6.91.128.111');
   const [rebondUsername, setRebondUsername] = useState('');
   const [rebondPassword, setRebondPassword] = useState('');
-  
+
   // Switch cible
   const [switchIp, setSwitchIp] = useState('');
   const [switchUsername, setSwitchUsername] = useState('');
   const [switchPassword, setSwitchPassword] = useState('');
-  
   const [configuration, setConfiguration] = useState('');
   const [extractedHostname, setExtractedHostname] = useState('');
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({ isConnected: false });
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
+    isConnected: false
+  });
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStep, setConnectionStep] = useState<string>('');
-  
+
   // État pour le script externe
   const [scriptConfigPath, setScriptConfigPath] = useState('C:\\Configurations');
   const [availableConfigs, setAvailableConfigs] = useState<string[]>([]);
@@ -56,22 +55,22 @@ export default function DeviceConnection() {
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
   const [executionLogs, setExecutionLogs] = useState<string>('');
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
-  
+
   // État pour le bridge server local
   const [bridgeServerAvailable, setBridgeServerAvailable] = useState(false);
   const [checkingBridge, setCheckingBridge] = useState(false);
-  
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   // Vérification périodique du bridge server
   useEffect(() => {
     checkBridgeServer();
-    
+
     // Vérification toutes les 30 secondes
     const interval = setInterval(checkBridgeServer, 30000);
     return () => clearInterval(interval);
   }, []);
-
   const checkBridgeServer = async () => {
     setCheckingBridge(true);
     try {
@@ -86,13 +85,7 @@ export default function DeviceConnection() {
 
   // Fonction pour extraire le hostname de la configuration
   const extractHostname = (configData: string): string => {
-    const patterns = [
-      /set system host-name\s+(\S+)/i,
-      /set hostname\s+(\S+)/i,
-      /hostname\s+(\S+)/i,
-      /host-name\s+(\S+)/i
-    ];
-
+    const patterns = [/set system host-name\s+(\S+)/i, /set hostname\s+(\S+)/i, /hostname\s+(\S+)/i, /host-name\s+(\S+)/i];
     for (const pattern of patterns) {
       const match = configData.match(pattern);
       if (match) {
@@ -104,11 +97,9 @@ export default function DeviceConnection() {
     // Si aucun hostname trouvé, utiliser l'IP
     return `switch_${switchIp.replace(/\./g, '_')}`;
   };
-
   const generateMockConfiguration = (switchIp: string): string => {
     const timestamp = new Date().toLocaleString('fr-FR');
     const hostname = `SW-${switchIp.replace(/\./g, '-')}`;
-    
     return `# Configuration récupérée le ${timestamp}
 # Serveur Rebond: ${rebondServerIp}
 # Switch IP: ${switchIp}
@@ -208,10 +199,8 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 # Configuration terminée - Switch ${hostname}
 # Timestamp de fin: ${new Date().toLocaleString('fr-FR')}`;
   };
-
   const handlePing = async (target: 'rebond' | 'switch') => {
     const ip = target === 'rebond' ? rebondServerIp : switchIp;
-    
     if (!ip) {
       toast({
         title: "Erreur",
@@ -220,16 +209,15 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       });
       return;
     }
-
     try {
       if (tauriInvoke) {
         // Mode desktop - utiliser Tauri
-        const isReachable = await tauriInvoke('ping_host', { ip }) as boolean;
+        const isReachable = (await tauriInvoke('ping_host', {
+          ip
+        })) as boolean;
         toast({
           title: `Ping ${target}`,
-          description: isReachable ? 
-            `✓ ${ip} est accessible (port 22 ouvert)` : 
-            `✗ ${ip} n'est pas accessible`,
+          description: isReachable ? `✓ ${ip} est accessible (port 22 ouvert)` : `✗ ${ip} n'est pas accessible`,
           variant: isReachable ? "default" : "destructive"
         });
       } else if (bridgeServerAvailable) {
@@ -237,16 +225,14 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
         const result = await bridgeClient.pingDevice(ip);
         toast({
           title: `Ping ${target}`,
-          description: result.success ? 
-            `✓ ${ip} est accessible` : 
-            `✗ ${result.error || 'Ping échoué'}`,
+          description: result.success ? `✓ ${ip} est accessible` : `✗ ${result.error || 'Ping échoué'}`,
           variant: result.success ? "default" : "destructive"
         });
       } else {
         // Mode simulation
         toast({
           title: "Mode simulation",
-          description: `Ping vers ${ip} - démarrez le bridge server pour un vrai test`,
+          description: `Ping vers ${ip} - démarrez le bridge server pour un vrai test`
         });
       }
     } catch (error: any) {
@@ -257,7 +243,6 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       });
     }
   };
-
   const handleTestRebond = async () => {
     if (!rebondUsername || !rebondPassword) {
       toast({
@@ -267,34 +252,30 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       });
       return;
     }
-
     try {
       if (tauriInvoke) {
         // Mode desktop - utiliser Tauri
-        const result = await tauriInvoke('test_rebond_connection', {
+        const result = (await tauriInvoke('test_rebond_connection', {
           ip: rebondServerIp,
           username: rebondUsername,
           password: rebondPassword
-        }) as string;
-        
+        })) as string;
         toast({
           title: "Test de connexion",
-          description: result,
+          description: result
         });
       } else if (bridgeServerAvailable) {
         // Mode bridge - utiliser le serveur local
         const result = await bridgeClient.testConnection(rebondServerIp, rebondUsername, rebondPassword, 'juniper');
         toast({
           title: "Test de connexion",
-          description: result.success ? 
-            `✓ Connexion réussie vers ${result.data?.hostname || rebondServerIp}` : 
-            `✗ ${result.error || 'Test échoué'}`,
+          description: result.success ? `✓ Connexion réussie vers ${result.data?.hostname || rebondServerIp}` : `✗ ${result.error || 'Test échoué'}`,
           variant: result.success ? "default" : "destructive"
         });
       } else {
         toast({
           title: "Mode simulation",
-          description: "Test de connexion Rebond - démarrez le bridge server pour un vrai test",
+          description: "Test de connexion Rebond - démarrez le bridge server pour un vrai test"
         });
       }
     } catch (error: any) {
@@ -305,7 +286,6 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       });
     }
   };
-
   const handleConnect = async () => {
     // Validation des champs même en mode simulation
     if (!rebondUsername || !rebondPassword || !switchIp || !switchUsername) {
@@ -321,31 +301,37 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     if (tauriInvoke) {
       // ... keep existing code (desktop mode implementation)
       setIsConnecting(true);
-      setConnectionStatus({ isConnected: false });
+      setConnectionStatus({
+        isConnected: false
+      });
       setConnectionStep(`Connexion au serveur Rebond ${rebondServerIp}...`);
-
       try {
         setConnectionStep("📦 Préparation du script Python...");
-        
-        const result = await tauriInvoke('run_rebond_script', {
+        const result = (await tauriInvoke('run_rebond_script', {
           rebond_ip: rebondServerIp,
           rebond_username: rebondUsername,
           rebond_password: rebondPassword,
           switch_ip: switchIp,
           switch_username: switchUsername,
-          switch_password: switchPassword,
-        }) as { success: boolean; message: string; configuration?: string; hostname?: string; execution_logs?: string };
-
+          switch_password: switchPassword
+        })) as {
+          success: boolean;
+          message: string;
+          configuration?: string;
+          hostname?: string;
+          execution_logs?: string;
+        };
         if (result.success && result.configuration) {
           setConfiguration(result.configuration);
           setExtractedHostname(result.hostname || 'Unknown');
           setExecutionLogs(result.execution_logs || '');
           setConnectionStep("✓ Configuration récupérée avec succès");
-          setConnectionStatus({ isConnected: true });
-          
+          setConnectionStatus({
+            isConnected: true
+          });
           toast({
             title: "Connexion réussie",
-            description: `Configuration du switch ${result.hostname} récupérée`,
+            description: `Configuration du switch ${result.hostname} récupérée`
           });
         } else {
           setExecutionLogs(result.execution_logs || result.message || '');
@@ -353,11 +339,10 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
         }
       } catch (error: any) {
         setConnectionStep(`❌ ${error.message || 'Erreur de connexion'}`);
-        setConnectionStatus({ 
-          isConnected: false, 
+        setConnectionStatus({
+          isConnected: false,
           error: error.message || 'Erreur de connexion inconnue'
         });
-        
         toast({
           title: "Connexion échouée",
           description: error.message || 'Erreur de connexion',
@@ -372,47 +357,36 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     // 2. Mode Bridge Server - connexion réelle via serveur local
     if (bridgeServerAvailable) {
       setIsConnecting(true);
-      setConnectionStatus({ isConnected: false });
-      
+      setConnectionStatus({
+        isConnected: false
+      });
       try {
         setConnectionStep("🌉 Connexion via Bridge Server...");
         await new Promise(resolve => setTimeout(resolve, 500));
-        
         setConnectionStep("🔗 Récupération de la configuration...");
-        
-        const result = await bridgeClient.getConfiguration(
-          rebondServerIp,
-          rebondUsername,
-          rebondPassword,
-          switchIp,
-          switchUsername,
-          switchPassword
-        );
-
+        const result = await bridgeClient.getConfiguration(rebondServerIp, rebondUsername, rebondPassword, switchIp, switchUsername, switchPassword);
         if (result.success && result.data) {
           setConfiguration(result.data.configuration);
           setExtractedHostname(result.data.hostname);
           setExecutionLogs(result.data.logs);
           setConnectionStep("✓ Configuration récupérée avec succès via Bridge");
-          setConnectionStatus({ 
+          setConnectionStatus({
             isConnected: true,
             message: "✅ Connexion réussie via Bridge Server"
           });
-          
           toast({
             title: "Connexion réussie",
-            description: `Configuration récupérée via Bridge Server`,
+            description: `Configuration récupérée via Bridge Server`
           });
         } else {
           throw new Error(result.error || 'Récupération échouée');
         }
       } catch (error: any) {
         setConnectionStep(`❌ ${error.message || 'Erreur Bridge'}`);
-        setConnectionStatus({ 
-          isConnected: false, 
+        setConnectionStatus({
+          isConnected: false,
           error: error.message || 'Erreur Bridge Server'
         });
-        
         toast({
           title: "Erreur Bridge",
           description: error.message || 'Erreur Bridge Server',
@@ -427,21 +401,20 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     // 3. Mode Simulation - pas de connexion réelle
     if (!tauriInvoke && !bridgeServerAvailable) {
       setIsConnecting(true);
-      setConnectionStatus({ isConnected: false });
-      
+      setConnectionStatus({
+        isConnected: false
+      });
+
       // Simuler les étapes de connexion
       setConnectionStep("🌐 Mode simulation - Connexion au serveur Rebond...");
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       setConnectionStep("🔑 Simulation - Authentification SSH...");
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       setConnectionStep("📡 Simulation - Connexion au switch...");
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       setConnectionStep("📋 Simulation - Récupération de la configuration...");
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Configuration simulée
       const simulatedConfig = `# Configuration simulée pour ${switchIp}
 interfaces {
@@ -478,25 +451,22 @@ vlans {
         description "VLAN Invités";
     }
 }`;
-
       setConfiguration(simulatedConfig);
-      setConnectionStatus({ 
+      setConnectionStatus({
         isConnected: true,
         message: "✅ Connexion simulée réussie - Utilisez l'app desktop pour une vraie connexion"
       });
       setConnectionStep("");
       setIsConnecting(false);
-      
       toast({
         title: "Mode simulation",
-        description: "Configuration simulée générée avec succès",
+        description: "Configuration simulée générée avec succès"
       });
       return;
     }
 
     // Validation IP basique
     const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-    
     if (!rebondUsername || !rebondPassword || !switchIp || !switchUsername) {
       toast({
         title: "Erreur de saisie",
@@ -505,7 +475,6 @@ vlans {
       });
       return;
     }
-
     if (!ipPattern.test(switchIp)) {
       toast({
         title: "Erreur IP",
@@ -514,33 +483,38 @@ vlans {
       });
       return;
     }
-
     setIsConnecting(true);
-    setConnectionStatus({ isConnected: false });
+    setConnectionStatus({
+      isConnected: false
+    });
     setConnectionStep(`Connexion au serveur Rebond ${rebondServerIp}...`);
-
     try {
       setConnectionStep("📦 Préparation du script Python...");
-      
-      const result = await tauriInvoke('run_rebond_script', {
+      const result = (await tauriInvoke('run_rebond_script', {
         rebond_ip: rebondServerIp,
         rebond_username: rebondUsername,
         rebond_password: rebondPassword,
         switch_ip: switchIp,
         switch_username: switchUsername,
-        switch_password: switchPassword,
-      }) as { success: boolean; message: string; configuration?: string; hostname?: string; execution_logs?: string };
-
+        switch_password: switchPassword
+      })) as {
+        success: boolean;
+        message: string;
+        configuration?: string;
+        hostname?: string;
+        execution_logs?: string;
+      };
       if (result.success && result.configuration) {
         setConfiguration(result.configuration);
         setExtractedHostname(result.hostname || 'Unknown');
         setExecutionLogs(result.execution_logs || '');
         setConnectionStep("✓ Configuration récupérée avec succès");
-        setConnectionStatus({ isConnected: true });
-        
+        setConnectionStatus({
+          isConnected: true
+        });
         toast({
           title: "Connexion réussie",
-          description: `Configuration du switch ${result.hostname} récupérée`,
+          description: `Configuration du switch ${result.hostname} récupérée`
         });
       } else {
         setExecutionLogs(result.execution_logs || result.message || '');
@@ -548,11 +522,10 @@ vlans {
       }
     } catch (error: any) {
       setConnectionStep(`❌ ${error.message || 'Erreur de connexion'}`);
-      setConnectionStatus({ 
-        isConnected: false, 
+      setConnectionStatus({
+        isConnected: false,
         error: error.message || 'Erreur de connexion inconnue'
       });
-      
       toast({
         title: "Connexion échouée",
         description: error.message || 'Erreur de connexion',
@@ -562,24 +535,25 @@ vlans {
       setIsConnecting(false);
     }
   };
-
   const handleDisconnect = () => {
-    setConnectionStatus({ isConnected: false });
+    setConnectionStatus({
+      isConnected: false
+    });
     setConfiguration('');
     setExtractedHostname('');
     setConnectionStep('');
     setExecutionLogs('');
     toast({
       title: "Déconnecté",
-      description: "Sessions fermées (serveur Rebond et switch)",
+      description: "Sessions fermées (serveur Rebond et switch)"
     });
   };
-
   const downloadConfiguration = () => {
     if (!configuration) return;
-
     const filename = extractedHostname ? `${extractedHostname}.txt` : `switch_${switchIp.replace(/\./g, '_')}.txt`;
-    const blob = new Blob([configuration], { type: 'text/plain' });
+    const blob = new Blob([configuration], {
+      type: 'text/plain'
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -588,10 +562,9 @@ vlans {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
     toast({
       title: "Téléchargement",
-      description: `Configuration sauvegardée dans ${filename}`,
+      description: `Configuration sauvegardée dans ${filename}`
     });
   };
 
@@ -607,38 +580,35 @@ Téléchargé depuis l'application Network Management Tools
 `;
 
     // Télécharger le script depuis le dossier public
-    fetch('/scripts/rebond_fetch_config.py')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Script non trouvé');
-        }
-        return response.text();
-      })
-      .then(content => {
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'rebond_fetch_config.py';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        toast({
-          title: "Script téléchargé",
-          description: "rebond_fetch_config.py sauvegardé sur votre ordinateur",
-        });
-      })
-      .catch(error => {
-        toast({
-          title: "Erreur de téléchargement",
-          description: "Impossible de télécharger le script Python",
-          variant: "destructive"
-        });
+    fetch('/scripts/rebond_fetch_config.py').then(response => {
+      if (!response.ok) {
+        throw new Error('Script non trouvé');
+      }
+      return response.text();
+    }).then(content => {
+      const blob = new Blob([content], {
+        type: 'text/plain'
       });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'rebond_fetch_config.py';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Script téléchargé",
+        description: "rebond_fetch_config.py sauvegardé sur votre ordinateur"
+      });
+    }).catch(error => {
+      toast({
+        title: "Erreur de téléchargement",
+        description: "Impossible de télécharger le script Python",
+        variant: "destructive"
+      });
+    });
   };
-
   const browseFolderForConfigs = async () => {
     if (!tauriInvoke) {
       toast({
@@ -648,14 +618,13 @@ Téléchargé depuis l'application Network Management Tools
       });
       return;
     }
-
     try {
       const folderPath = await tauriInvoke('select_folder');
       if (folderPath) {
         setScriptConfigPath(folderPath);
         toast({
           title: "Dossier sélectionné",
-          description: `Dossier: ${folderPath}`,
+          description: `Dossier: ${folderPath}`
         });
       }
     } catch (error: any) {
@@ -666,31 +635,26 @@ Téléchargé depuis l'application Network Management Tools
       });
     }
   };
-
   const listTxtFiles = async () => {
     setIsLoadingConfigs(true);
     try {
       if (tauriInvoke) {
         // Mode desktop - lister les fichiers réels
-        const files = await tauriInvoke('list_txt_files', { path: scriptConfigPath }) as string[];
+        const files = (await tauriInvoke('list_txt_files', {
+          path: scriptConfigPath
+        })) as string[];
         setAvailableConfigs(files);
-        
         toast({
           title: "Fichiers listés",
-          description: `${files.length} fichier(s) .txt trouvé(s)`,
+          description: `${files.length} fichier(s) .txt trouvé(s)`
         });
       } else {
         // Mode web - simulation
-        const simulatedFiles = [
-          'SW-192-168-1-10_20241201_143022.txt',
-          'SW-Core-Main_20241201_142055.txt',
-          'switch_10_0_1_1_20241201_141230.txt'
-        ];
+        const simulatedFiles = ['SW-192-168-1-10_20241201_143022.txt', 'SW-Core-Main_20241201_142055.txt', 'switch_10_0_1_1_20241201_141230.txt'];
         setAvailableConfigs(simulatedFiles);
-        
         toast({
           title: "Mode simulation",
-          description: `${simulatedFiles.length} fichiers simulés affichés`,
+          description: `${simulatedFiles.length} fichiers simulés affichés`
         });
       }
     } catch (error: any) {
@@ -703,24 +667,20 @@ Téléchargé depuis l'application Network Management Tools
       setIsLoadingConfigs(false);
     }
   };
-
   const loadConfigFile = async (filename: string) => {
     if (!filename) return;
-
     try {
       if (tauriInvoke) {
         // Mode desktop - lire le fichier réel
-        const content = await tauriInvoke('read_txt_file', { 
+        const content = (await tauriInvoke('read_txt_file', {
           path: scriptConfigPath,
           filename: filename
-        }) as string;
-        
+        })) as string;
         setConfigFileContent(content);
         setSelectedConfigFile(filename);
-        
         toast({
           title: "Fichier chargé",
-          description: `Configuration de ${filename}`,
+          description: `Configuration de ${filename}`
         });
       } else {
         // Mode web - contenu simulé
@@ -738,13 +698,11 @@ set system time-zone Europe/Paris
 set interfaces me0 unit 0 family inet address 192.168.1.10/24
 set interfaces ge-0/0/0 unit 0 family ethernet-switching interface-mode access
 set vlans default vlan-id 1`;
-        
         setConfigFileContent(mockContent);
         setSelectedConfigFile(filename);
-        
         toast({
           title: "Mode simulation",
-          description: `Contenu simulé pour ${filename}`,
+          description: `Contenu simulé pour ${filename}`
         });
       }
     } catch (error: any) {
@@ -755,7 +713,6 @@ set vlans default vlan-id 1`;
       });
     }
   };
-
   const handleFileUpload = (content: string, filename: string) => {
     if (!filename.toLowerCase().endsWith('.txt')) {
       toast({
@@ -765,20 +722,15 @@ set vlans default vlan-id 1`;
       });
       return;
     }
-
     setConfigFileContent(content);
     setSelectedConfigFile(filename);
-    
     toast({
       title: "Fichier importé",
-      description: `Configuration de ${filename} importée`,
+      description: `Configuration de ${filename} importée`
     });
   };
-
   const isDesktopApp = Boolean((window as any).__TAURI__);
-
-  return (
-    <div className="min-h-screen bg-background p-6">
+  return <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <header className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-primary">Connexion SSH aux Équipements</h1>
@@ -796,44 +748,33 @@ set vlans default vlan-id 1`;
                 {isDesktopApp ? '🖥️ Mode Desktop - SSH Réel' : '🌐 Mode Web - Simulation uniquement'}
               </Badge>
             </div>
-            <strong>Architecture:</strong> Serveur Rebond (6.91.128.111) → Switch cible<br/>
+            <strong>Architecture:</strong> Serveur Rebond (6.91.128.111) → Switch cible<br />
             <strong>Commande exécutée:</strong> show configuration | display set | no-more
-            {!isDesktopApp && (
-              <>
-                <br/><strong>Note:</strong> Pour récupérer de vraies configurations, utilisez l'application desktop avec <code>cargo tauri dev</code>
-              </>
-            )}
+            {!isDesktopApp && <>
+                <br /><strong>Note:</strong> Pour récupérer de vraies configurations, utilisez l'application desktop avec <code>cargo tauri dev</code>
+              </>}
           </AlertDescription>
         </Alert>
 
         <DesktopCompiler isDesktopApp={isDesktopApp} />
 
         {/* Bridge Server Local */}
-        {!isDesktopApp && (
-          <Card className="border-l-4 border-l-primary">
+        {!isDesktopApp && <Card className="border-l-4 border-l-primary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Server className="h-5 w-5 text-primary" />
                 Serveur Bridge Local
                 <Badge variant={bridgeServerAvailable ? "default" : "destructive"} className="ml-auto">
-                  {checkingBridge ? (
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  ) : (
-                    <div className={`h-2 w-2 rounded-full mr-1 ${bridgeServerAvailable ? 'bg-green-500' : 'bg-red-500'}`} />
-                  )}
+                  {checkingBridge ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <div className={`h-2 w-2 rounded-full mr-1 ${bridgeServerAvailable ? 'bg-green-500' : 'bg-red-500'}`} />}
                   {bridgeServerAvailable ? 'Online' : 'Offline'}
                 </Badge>
               </CardTitle>
               <CardDescription>
-                {bridgeServerAvailable 
-                  ? "Bridge Server actif - Connexions SSH réelles disponibles"
-                  : "Démarrez le Bridge Server pour activer les connexions SSH réelles"
-                }
+                {bridgeServerAvailable ? "Bridge Server actif - Connexions SSH réelles disponibles" : "Démarrez le Bridge Server pour activer les connexions SSH réelles"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {!bridgeServerAvailable ? (
-                <div className="bg-muted p-4 rounded-lg space-y-3">
+              {!bridgeServerAvailable ? <div className="bg-muted p-4 rounded-lg space-y-3">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-warning" />
                     <strong>Configuration du Bridge Server</strong>
@@ -861,31 +802,16 @@ set vlans default vlan-id 1`;
                   </div>
                   
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={checkBridgeServer}
-                      disabled={checkingBridge}
-                    >
-                      {checkingBridge ? (
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      ) : (
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                      )}
+                    <Button variant="outline" size="sm" onClick={checkBridgeServer} disabled={checkingBridge}>
+                      {checkingBridge ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
                       Vérifier
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => window.open('http://127.0.0.1:5001/docs', '_blank')}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => window.open('http://127.0.0.1:5001/docs', '_blank')}>
                       <ExternalLink className="h-3 w-3 mr-1" />
                       API Docs
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+                </div> : <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
                   <div className="flex items-center gap-2 text-green-700 mb-2">
                     <div className="h-2 w-2 bg-green-500 rounded-full" />
                     <strong>Bridge Server actif</strong>
@@ -894,20 +820,14 @@ set vlans default vlan-id 1`;
                     Connexions SSH réelles activées via http://127.0.0.1:5001
                   </p>
                   <div className="flex gap-2 mt-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => window.open('http://127.0.0.1:5001/docs', '_blank')}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => window.open('http://127.0.0.1:5001/docs', '_blank')}>
                       <ExternalLink className="h-3 w-3 mr-1" />
                       API Docs
                     </Button>
                   </div>
-                </div>
-              )}
+                </div>}
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
         <div className="grid grid-cols-1 gap-6">
           {/* Script externe */}
@@ -925,11 +845,7 @@ set vlans default vlan-id 1`;
               {/* Téléchargement du script */}
               <div className="space-y-2">
                 <Label>Script Python</Label>
-                <Button
-                  variant="outline"
-                  onClick={downloadPythonScript}
-                  className="w-full justify-start gap-2"
-                >
+                <Button variant="outline" onClick={downloadPythonScript} className="w-full justify-start gap-2">
                   <Download className="h-4 w-4" />
                   Télécharger rebond_fetch_config.py
                 </Button>
@@ -942,120 +858,77 @@ set vlans default vlan-id 1`;
               <div className="space-y-2">
                 <Label htmlFor="config-path">Dossier des configurations .txt</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="config-path"
-                    value={scriptConfigPath}
-                    onChange={(e) => setScriptConfigPath(e.target.value)}
-                    placeholder="C:\Configurations"
-                  />
-                  {isDesktopApp && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={browseFolderForConfigs}
-                      title="Parcourir..."
-                    >
+                  <Input id="config-path" value={scriptConfigPath} onChange={e => setScriptConfigPath(e.target.value)} placeholder="C:\Configurations" />
+                  {isDesktopApp && <Button variant="outline" size="icon" onClick={browseFolderForConfigs} title="Parcourir...">
                       <FolderOpen className="h-4 w-4" />
-                    </Button>
-                  )}
+                    </Button>}
                 </div>
               </div>
 
               {/* Lister les fichiers .txt */}
-              <Button
-                variant="outline"
-                onClick={listTxtFiles}
-                disabled={isLoadingConfigs}
-                className="w-full justify-start gap-2"
-              >
-                {isLoadingConfigs ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FileText className="h-4 w-4" />
-                )}
+              <Button variant="outline" onClick={listTxtFiles} disabled={isLoadingConfigs} className="w-full justify-start gap-2">
+                {isLoadingConfigs ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                 {isLoadingConfigs ? "Chargement..." : "Lister les fichiers .txt"}
               </Button>
 
               {/* Sélection de fichier */}
-              {availableConfigs.length > 0 && (
-                <div className="space-y-2">
+              {availableConfigs.length > 0 && <div className="space-y-2">
                   <Label>Fichiers de configuration disponibles</Label>
                   <Select value={selectedConfigFile} onValueChange={loadConfigFile}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un fichier .txt" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableConfigs.map((file, index) => (
-                        <SelectItem key={index} value={file}>
+                      {availableConfigs.map((file, index) => <SelectItem key={index} value={file}>
                           {file}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
+                </div>}
 
               {/* Import manuel en mode web */}
-              {!isDesktopApp && (
-                <div className="space-y-2">
-                  <Label>Ou importer un fichier .txt manuellement</Label>
+              {!isDesktopApp && <div className="space-y-2">
+                  
                   <FileUpload onFileRead={handleFileUpload} />
-                </div>
-              )}
+                </div>}
 
               {/* Affichage du contenu du fichier sélectionné */}
-              {configFileContent && (
-                <div className="space-y-2">
+              {configFileContent && <div className="space-y-2">
                   <Label>Contenu de {selectedConfigFile}</Label>
-                  <Textarea
-                    value={configFileContent}
-                    readOnly
-                    className="min-h-48 font-mono text-xs bg-muted/50"
-                  />
+                  <Textarea value={configFileContent} readOnly className="min-h-48 font-mono text-xs bg-muted/50" />
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        navigator.clipboard.writeText(configFileContent);
-                        toast({
-                          title: "Copié !",
-                          description: "Configuration copiée dans le presse-papiers",
-                        });
-                      }}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => {
+                  navigator.clipboard.writeText(configFileContent);
+                  toast({
+                    title: "Copié !",
+                    description: "Configuration copiée dans le presse-papiers"
+                  });
+                }}>
                       Copier
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const blob = new Blob([configFileContent], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = selectedConfigFile || 'configuration.txt';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                      }}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => {
+                  const blob = new Blob([configFileContent], {
+                    type: 'text/plain'
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = selectedConfigFile || 'configuration.txt';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}>
                       Télécharger
                     </Button>
                   </div>
-                </div>
-              )}
+                </div>}
 
               {/* Guide d'installation et d'utilisation locale */}
               <div className="border-t pt-4 mt-6">
                 <Collapsible open={isInstallGuideOpen} onOpenChange={setIsInstallGuideOpen}>
                   <CollapsibleTrigger className="flex items-center gap-2 w-full hover:bg-muted/50 p-2 rounded transition-colors">
-                    {isInstallGuideOpen ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
+                    {isInstallGuideOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     <span className="font-medium text-sm">Guide d'installation et d'utilisation locale</span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-6 pt-4">
@@ -1078,39 +951,24 @@ set vlans default vlan-id 1`;
                         <div>
                           <h5 className="font-medium mb-2">Étapes de construction :</h5>
                           <div className="space-y-2">
-                            {[
-                              'npm install',
-                              'cargo install tauri-cli --version ^1.5',
-                              'npm run build',
-                              '.\\src-tauri\\target\\release\\dot1x-automator.exe'
-                            ].map((cmd, index) => (
-                              <div key={index} className="flex items-center gap-2 p-2 bg-background rounded border">
+                            {['npm install', 'cargo install tauri-cli --version ^1.5', 'npm run build', '.\\src-tauri\\target\\release\\dot1x-automator.exe'].map((cmd, index) => <div key={index} className="flex items-center gap-2 p-2 bg-background rounded border">
                                 <code className="flex-1 text-xs font-mono">{cmd}</code>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(cmd);
-                                    toast({
-                                      title: "Copié !",
-                                      description: "Commande copiée dans le presse-papiers"
-                                    });
-                                  }}
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => {
+                              navigator.clipboard.writeText(cmd);
+                              toast({
+                                title: "Copié !",
+                                description: "Commande copiée dans le presse-papiers"
+                              });
+                            }}>
                                   <Copy className="h-3 w-3" />
                                 </Button>
-                              </div>
-                            ))}
+                              </div>)}
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 dark:border-green-800">
                           <span className="text-xs">✅ Aucune installation requise - Copiez simplement le .exe!</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open('/BUILD-GUIDE.md', '_blank')}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => window.open('/BUILD-GUIDE.md', '_blank')}>
                             <ExternalLink className="h-3 w-3" />
                           </Button>
                         </div>
@@ -1135,17 +993,13 @@ set vlans default vlan-id 1`;
                           <h5 className="font-medium mb-2">Utilisation interactive :</h5>
                           <div className="flex items-center gap-2 p-2 bg-background rounded border">
                             <code className="flex-1 text-xs font-mono">python .\\rebond_fetch_config.py</code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                navigator.clipboard.writeText('python .\\rebond_fetch_config.py');
-                                toast({
-                                  title: "Copié !",
-                                  description: "Commande copiée dans le presse-papiers"
-                                });
-                              }}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => {
+                            navigator.clipboard.writeText('python .\\rebond_fetch_config.py');
+                            toast({
+                              title: "Copié !",
+                              description: "Commande copiée dans le presse-papiers"
+                            });
+                          }}>
                               <Copy className="h-3 w-3" />
                             </Button>
                           </div>
@@ -1154,33 +1008,25 @@ set vlans default vlan-id 1`;
 
                         <div>
                           <h5 className="font-medium mb-2">Avec arguments :</h5>
-                          {rebondUsername && rebondPassword && switchIp && switchUsername ? (
-                            <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                          {rebondUsername && rebondPassword && switchIp && switchUsername ? <div className="flex items-center gap-2 p-2 bg-background rounded border">
                               <code className="flex-1 text-xs font-mono break-all">
                                 python rebond_fetch_config.py {rebondServerIp} "{rebondUsername}" "***" {switchIp} "{switchUsername}" "{switchPassword ? '***' : ''}"
                               </code>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const fullCmd = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;
-                                  navigator.clipboard.writeText(fullCmd);
-                                  toast({
-                                    title: "Commande complète copiée !",
-                                    description: "Commande avec vos paramètres copiée"
-                                  });
-                                }}
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => {
+                            const fullCmd = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;
+                            navigator.clipboard.writeText(fullCmd);
+                            toast({
+                              title: "Commande complète copiée !",
+                              description: "Commande avec vos paramètres copiée"
+                            });
+                          }}>
                                 <Copy className="h-3 w-3" />
                               </Button>
-                            </div>
-                          ) : (
-                            <div className="p-2 bg-yellow-50 dark:bg-yellow-950/30 rounded border border-yellow-200 dark:border-yellow-800">
+                            </div> : <div className="p-2 bg-yellow-50 dark:bg-yellow-950/30 rounded border border-yellow-200 dark:border-yellow-800">
                               <p className="text-xs text-yellow-800 dark:text-yellow-200">
                                 ⚠️ Remplissez les champs Rebond et Switch pour générer la commande complète
                               </p>
-                            </div>
-                          )}
+                            </div>}
                         </div>
 
                         <div className="space-y-2">
@@ -1225,35 +1071,17 @@ set vlans default vlan-id 1`;
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="rebond-ip">Adresse IP</Label>
-                    <Input
-                      id="rebond-ip"
-                      value={rebondServerIp}
-                      disabled
-                      className="bg-muted"
-                    />
+                    <Input id="rebond-ip" value={rebondServerIp} disabled className="bg-muted" />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="rebond-username">Utilisateur *</Label>
-                    <Input
-                      id="rebond-username"
-                      placeholder="Nom d'utilisateur serveur"
-                      value={rebondUsername}
-                      onChange={(e) => setRebondUsername(e.target.value)}
-                      disabled={connectionStatus.isConnected}
-                    />
+                    <Input id="rebond-username" placeholder="Nom d'utilisateur serveur" value={rebondUsername} onChange={e => setRebondUsername(e.target.value)} disabled={connectionStatus.isConnected} />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="rebond-password">Mot de passe *</Label>
-                    <Input
-                      id="rebond-password"
-                      type="password"
-                      placeholder="Mot de passe serveur Rebond"
-                      value={rebondPassword}
-                      onChange={(e) => setRebondPassword(e.target.value)}
-                      disabled={connectionStatus.isConnected}
-                    />
+                    <Input id="rebond-password" type="password" placeholder="Mot de passe serveur Rebond" value={rebondPassword} onChange={e => setRebondPassword(e.target.value)} disabled={connectionStatus.isConnected} />
                   </div>
                 </div>
               </div>
@@ -1268,36 +1096,17 @@ set vlans default vlan-id 1`;
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="switch-ip">Adresse IP *</Label>
-                    <Input
-                      id="switch-ip"
-                      placeholder="192.168.1.10"
-                      value={switchIp}
-                      onChange={(e) => setSwitchIp(e.target.value)}
-                      disabled={connectionStatus.isConnected}
-                    />
+                    <Input id="switch-ip" placeholder="192.168.1.10" value={switchIp} onChange={e => setSwitchIp(e.target.value)} disabled={connectionStatus.isConnected} />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="switch-username">Utilisateur *</Label>
-                    <Input
-                      id="switch-username"
-                      placeholder="root"
-                      value={switchUsername}
-                      onChange={(e) => setSwitchUsername(e.target.value)}
-                      disabled={connectionStatus.isConnected}
-                    />
+                    <Input id="switch-username" placeholder="root" value={switchUsername} onChange={e => setSwitchUsername(e.target.value)} disabled={connectionStatus.isConnected} />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="switch-password">Mot de passe</Label>
-                    <Input
-                      id="switch-password"
-                      type="password"
-                      placeholder="Optionnel si clés SSH"
-                      value={switchPassword}
-                      onChange={(e) => setSwitchPassword(e.target.value)}
-                      disabled={connectionStatus.isConnected}
-                    />
+                    <Input id="switch-password" type="password" placeholder="Optionnel si clés SSH" value={switchPassword} onChange={e => setSwitchPassword(e.target.value)} disabled={connectionStatus.isConnected} />
                   </div>
                 </div>
               </div>
@@ -1305,47 +1114,25 @@ set vlans default vlan-id 1`;
               {/* Boutons de test */}
               <div className="space-y-2">
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handlePing('rebond')}
-                    className="flex-1"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handlePing('rebond')} className="flex-1">
                     Ping Rebond
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleTestRebond}
-                    className="flex-1"
-                  >
+                  <Button variant="outline" size="sm" onClick={handleTestRebond} className="flex-1">
                     Test Connexion
                   </Button>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handlePing('switch')}
-                  className="w-full"
-                  disabled={!switchIp}
-                >
+                <Button variant="outline" size="sm" onClick={() => handlePing('switch')} className="w-full" disabled={!switchIp}>
                   Ping Switch ({switchIp || 'IP non saisie'})
                 </Button>
                 
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;
-                    navigator.clipboard.writeText(command);
-                    toast({
-                      title: "Commande copiée",
-                      description: "La commande CLI a été copiée dans le presse-papier (le fichier sera sauvé dans le répertoire du script)"
-                    });
-                  }}
-                  disabled={!rebondUsername || !rebondPassword || !switchIp || !switchUsername}
-                  className="w-full"
-                >
+                <Button variant="outline" size="sm" onClick={() => {
+                const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;
+                navigator.clipboard.writeText(command);
+                toast({
+                  title: "Commande copiée",
+                  description: "La commande CLI a été copiée dans le presse-papier (le fichier sera sauvé dans le répertoire du script)"
+                });
+              }} disabled={!rebondUsername || !rebondPassword || !switchIp || !switchUsername} className="w-full">
                   <Copy className="mr-2 h-4 w-4" />
                   Copier la commande CLI
                 </Button>
@@ -1362,50 +1149,29 @@ set vlans default vlan-id 1`;
                   Connexion SSH sécurisée via serveur Rebond → show configuration | display set | no-more
                 </span>
               </div>
-              {isConnecting && connectionStep && (
-                <div className="p-3 bg-muted/50 rounded-lg">
+              {isConnecting && connectionStep && <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">{connectionStep}</p>
-                </div>
-              )}
+                </div>}
 
               <div className="flex gap-2">
-                {!connectionStatus.isConnected ? (
-                  <Button 
-                    onClick={handleConnect}
-                    disabled={isConnecting}
-                    className="flex-1"
-                  >
-                    {isConnecting ? "Connexion en cours..." : 
-                     isDesktopApp ? "Se connecter (Desktop SSH)" :
-                     bridgeServerAvailable ? "Se connecter (Bridge SSH)" : 
-                     "Mode simulation (web)"}
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleDisconnect}
-                    variant="destructive"
-                    className="flex-1"
-                  >
+                {!connectionStatus.isConnected ? <Button onClick={handleConnect} disabled={isConnecting} className="flex-1">
+                    {isConnecting ? "Connexion en cours..." : isDesktopApp ? "Se connecter (Desktop SSH)" : bridgeServerAvailable ? "Se connecter (Bridge SSH)" : "Mode simulation (web)"}
+                  </Button> : <Button onClick={handleDisconnect} variant="destructive" className="flex-1">
                     Se déconnecter
-                  </Button>
-                )}
+                  </Button>}
               </div>
 
-              {connectionStatus.isConnected && (
-                <div className="space-y-2">
+              {connectionStatus.isConnected && <div className="space-y-2">
                   <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
                     Rebond: {rebondServerIp}
                   </Badge>
                   <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
                     Switch: {switchIp}
                   </Badge>
-                  {extractedHostname && (
-                    <Badge variant="outline" className="bg-secondary/10 text-secondary-foreground border-secondary/30">
+                  {extractedHostname && <Badge variant="outline" className="bg-secondary/10 text-secondary-foreground border-secondary/30">
                       Hostname: {extractedHostname}
-                    </Badge>
-                  )}
-                </div>
-              )}
+                    </Badge>}
+                </div>}
             </CardContent>
           </Card>
 
@@ -1421,46 +1187,31 @@ set vlans default vlan-id 1`;
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
-              {configuration ? (
-                <div className="space-y-4">
-                  <Textarea
-                    value={configuration}
-                    readOnly
-                    className="min-h-96 font-mono text-sm bg-muted/50"
-                  />
+              {configuration ? <div className="space-y-4">
+                  <Textarea value={configuration} readOnly className="min-h-96 font-mono text-sm bg-muted/50" />
                   <div className="grid grid-cols-2 gap-2">
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(configuration);
-                        toast({
-                          title: "Copié !",
-                          description: "Configuration copiée dans le presse-papiers",
-                        });
-                      }}
-                    >
+                    <Button variant="outline" onClick={() => {
+                  navigator.clipboard.writeText(configuration);
+                  toast({
+                    title: "Copié !",
+                    description: "Configuration copiée dans le presse-papiers"
+                  });
+                }}>
                       Copier la configuration
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={downloadConfiguration}
-                    >
+                    <Button variant="outline" onClick={downloadConfiguration}>
                       Télécharger ({extractedHostname || 'switch'}.txt)
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
+                </div> : <div className="text-center py-12 text-muted-foreground">
                   <Terminal className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>{isDesktopApp ? "Connectez-vous pour afficher la configuration" : "Mode web - La configuration réelle n'est disponible qu'en mode desktop"}</p>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
 
           {/* Logs d'exécution (mode desktop uniquement) */}
-          {isDesktopApp && executionLogs && (
-            <Card className="h-full flex flex-col">
+          {isDesktopApp && executionLogs && <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Code className="h-5 w-5 text-accent-foreground" />
@@ -1471,31 +1222,20 @@ set vlans default vlan-id 1`;
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1">
-                <Textarea
-                  value={executionLogs}
-                  readOnly
-                  className="min-h-64 font-mono text-xs bg-muted/50"
-                />
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(executionLogs);
-                    toast({
-                      title: "Copié !",
-                      description: "Logs copiés dans le presse-papiers",
-                    });
-                  }}
-                >
+                <Textarea value={executionLogs} readOnly className="min-h-64 font-mono text-xs bg-muted/50" />
+                <Button variant="outline" size="sm" className="mt-2" onClick={() => {
+              navigator.clipboard.writeText(executionLogs);
+              toast({
+                title: "Copié !",
+                description: "Logs copiés dans le presse-papiers"
+              });
+            }}>
                   Copier les logs
                 </Button>
               </CardContent>
-            </Card>
-          )}
+            </Card>}
 
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }

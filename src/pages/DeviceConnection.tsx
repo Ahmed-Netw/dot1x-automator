@@ -26,6 +26,13 @@ interface ConnectionStatus {
   error?: string;
   message?: string;
 }
+
+interface CustomSwitchRow {
+  id: string;
+  ip: string;
+  username: string;
+  password: string;
+}
 export default function DeviceConnection() {
   // Force recompilation - all "robont" references changed to "rebond"
   console.log('DeviceConnection loaded with rebond variables');

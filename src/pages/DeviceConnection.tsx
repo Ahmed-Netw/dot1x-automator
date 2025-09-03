@@ -94,6 +94,7 @@ export default function DeviceConnection() {
   } | null>(null);
   
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Vérification périodique du bridge server
   useEffect(() => {

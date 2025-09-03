@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2, ChevronDown, ChevronRight, ExternalLink, Server, Zap } from 'lucide-react';
+import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText, RefreshCw, Code, Copy, TestTube, Loader2, ChevronDown, ChevronRight, ExternalLink, Server, Zap, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
 import { FileUpload } from '@/components/FileUpload';
@@ -46,6 +46,9 @@ export default function DeviceConnection() {
   const [switchIp, setSwitchIp] = useState('');
   const [switchUsername, setSwitchUsername] = useState('');
   const [switchPassword, setSwitchPassword] = useState('');
+  
+  // Custom switch rows
+  const [customRows, setCustomRows] = useState<CustomSwitchRow[]>([]);
   const [configuration, setConfiguration] = useState('');
   const [extractedHostname, setExtractedHostname] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
@@ -88,6 +91,27 @@ export default function DeviceConnection() {
     } finally {
       setCheckingBridge(false);
     }
+  };
+
+  // Helper functions for custom rows
+  const addCustomRow = () => {
+    const newRow: CustomSwitchRow = {
+      id: Date.now().toString(),
+      ip: '',
+      username: switchUsername,
+      password: switchPassword
+    };
+    setCustomRows([...customRows, newRow]);
+  };
+
+  const updateCustomRow = (id: string, field: keyof Omit<CustomSwitchRow, 'id'>, value: string) => {
+    setCustomRows(customRows.map(row => 
+      row.id === id ? { ...row, [field]: value } : row
+    ));
+  };
+
+  const removeCustomRow = (id: string) => {
+    setCustomRows(customRows.filter(row => row.id !== id));
   };
 
   // Fonction pour extraire le hostname de la configuration
@@ -1095,9 +1119,21 @@ set vlans default vlan-id 1`;
 
               {/* Section Switch */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                  <div className="w-2 h-2 rounded-full bg-primary"></div>
-                  Switch Cible
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                    <div className="w-2 h-2 rounded-full bg-primary"></div>
+                    Switch Cible
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={addCustomRow}
+                    disabled={connectionStatus.isConnected}
+                    title="Ajouter une ligne Switch Cible"
+                    className="h-8 w-8"
+                  >
+                    <Plus className="h-4 w-4 text-red-500" />
+                  </Button>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1124,6 +1160,65 @@ set vlans default vlan-id 1`;
                     <Input id="switch-password" type="password" placeholder="Optionnel si clés SSH" value={switchPassword} onChange={e => setSwitchPassword(e.target.value)} disabled={connectionStatus.isConnected} />
                   </div>
                 </div>
+
+                {/* Custom rows */}
+                {customRows.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <div className="text-xs text-muted-foreground">
+                      Ces lignes permettent d'indiquer des identifiants différents pour certains switches.
+                    </div>
+                    {customRows.map((row) => (
+                      <div key={row.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-muted/20 rounded-lg">
+                        <div className="space-y-2">
+                          <Label htmlFor={`custom-ip-${row.id}`}>Adresse IP *</Label>
+                          <Input
+                            id={`custom-ip-${row.id}`}
+                            placeholder="192.168.1.10"
+                            value={row.ip}
+                            onChange={(e) => updateCustomRow(row.id, 'ip', e.target.value)}
+                            disabled={connectionStatus.isConnected}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor={`custom-username-${row.id}`}>Utilisateur *</Label>
+                          <Input
+                            id={`custom-username-${row.id}`}
+                            placeholder="root"
+                            value={row.username}
+                            onChange={(e) => updateCustomRow(row.id, 'username', e.target.value)}
+                            disabled={connectionStatus.isConnected}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2 relative">
+                          <Label htmlFor={`custom-password-${row.id}`}>Mot de passe</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id={`custom-password-${row.id}`}
+                              type="password"
+                              placeholder="Optionnel si clés SSH"
+                              value={row.password}
+                              onChange={(e) => updateCustomRow(row.id, 'password', e.target.value)}
+                              disabled={connectionStatus.isConnected}
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => removeCustomRow(row.id)}
+                              disabled={connectionStatus.isConnected}
+                              title="Supprimer cette ligne"
+                              className="h-10 w-10 shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Boutons de test */}

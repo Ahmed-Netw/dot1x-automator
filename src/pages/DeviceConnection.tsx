@@ -1170,12 +1170,6 @@ set vlans default vlan-id 1`;
                 </div>
               </div>
 
-              {/* Lister les fichiers .txt */}
-              <Button variant="outline" onClick={listTxtFiles} disabled={isLoadingConfigs} className="w-full justify-start gap-2">
-                {isLoadingConfigs ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                {isLoadingConfigs ? "Chargement..." : "Lister les fichiers .txt"}
-              </Button>
-
               {/* Sélection de fichier */}
               {availableConfigs.length > 0 && <div className="space-y-2">
                   <Label>Fichiers de configuration disponibles</Label>

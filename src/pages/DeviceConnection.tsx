@@ -801,9 +801,13 @@ vlans {
   const downloadConfiguration = () => {
     if (!configuration) return;
     const filename = extractedHostname ? `${extractedHostname}.txt` : `switch_${switchIp.replace(/\./g, '_')}.txt`;
-    const blob = new Blob([configuration], {
-      type: 'text/plain'
-    });
+    
+    setPendingTransfer({ content: configuration, filename });
+    setConfirmOpen(true);
+  };
+
+  const actualDownload = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -815,6 +819,48 @@ vlans {
     toast({
       title: "Téléchargement",
       description: `Configuration sauvegardée dans ${filename}`
+    });
+  };
+
+  const handleConfirmTransfer = () => {
+    if (pendingTransfer) {
+      actualDownload(pendingTransfer.content, pendingTransfer.filename);
+      
+      // Transfer to Juniper Configuration Tool
+      navigate('/juniper-config', { 
+        state: { 
+          fileContent: pendingTransfer.content,
+          filename: pendingTransfer.filename 
+        } 
+      });
+    }
+    setConfirmOpen(false);
+    setPendingTransfer(null);
+  };
+
+  const handleCancelTransfer = () => {
+    if (pendingTransfer) {
+      actualDownload(pendingTransfer.content, pendingTransfer.filename);
+    }
+    setConfirmOpen(false);
+    setPendingTransfer(null);
+  };
+
+  const transferToJuniper = (configuration: string, hostname?: string) => {
+    const filename = hostname 
+      ? `${sanitizeFilename(hostname)}.txt`
+      : `switch_${switchIp.replace(/\./g, '_')}.txt`;
+    
+    navigate('/juniper-config', { 
+      state: { 
+        fileContent: configuration,
+        filename: filename 
+      } 
+    });
+    
+    toast({
+      title: "Transfert effectué",
+      description: "Configuration envoyée vers l'outil Juniper Configuration Tool"
     });
   };
 

@@ -1159,16 +1159,6 @@ set vlans default vlan-id 1`;
                 </p>
               </div>
 
-              {/* Configuration du dossier de sortie */}
-              <div className="space-y-2">
-                <Label htmlFor="config-path">Dossier des configurations .txt</Label>
-                <div className="flex gap-2">
-                  <Input id="config-path" value={scriptConfigPath} onChange={e => setScriptConfigPath(e.target.value)} placeholder="C:\Configurations" />
-                  {isDesktopApp && <Button variant="outline" size="icon" onClick={browseFolderForConfigs} title="Parcourir...">
-                      <FolderOpen className="h-4 w-4" />
-                    </Button>}
-                </div>
-              </div>
 
               {/* Sélection de fichier */}
               {availableConfigs.length > 0 && <div className="space-y-2">

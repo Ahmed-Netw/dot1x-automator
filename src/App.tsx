@@ -30,7 +30,7 @@ const App = () => (
                 <img 
                   src="/lovable-uploads/72d5b4f9-d4b1-4fc0-882e-1c0d60b03291.png" 
                   alt="Orange Business Services" 
-                  className="h-8"
+                  className="h-12"
                 />
               </header>
               <main className="flex-1 overflow-auto">

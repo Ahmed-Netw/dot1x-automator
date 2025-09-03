@@ -40,74 +40,7 @@ export const FileUpload = ({ onFileRead }: FileUploadProps) => {
     }
   };
 
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-tech-primary" />
-          Configuration Juniper
-        </CardTitle>
-        <CardDescription>
-          Téléchargez le fichier de configuration de votre switch Juniper
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div
-          className={cn(
-            "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-            isDragging
-              ? "border-tech-primary bg-tech-primary/5"
-              : uploadedFile
-                ? "border-tech-success bg-tech-success/5"
-                : "border-border hover:border-tech-primary/50"
-          )}
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onDragEnter={() => setIsDragging(true)}
-          onDragLeave={() => setIsDragging(false)}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".txt,.conf,.cfg"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          
-          {uploadedFile ? (
-            <div className="space-y-2">
-              <Check className="h-12 w-12 text-tech-success mx-auto" />
-              <p className="text-tech-success font-medium">{uploadedFile}</p>
-              <p className="text-sm text-muted-foreground">
-                Fichier chargé avec succès
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Upload className="h-12 w-12 text-muted-foreground mx-auto" />
-              <p className="text-lg font-medium">
-                Glissez-déposez votre fichier de configuration
-              </p>
-              <p className="text-sm text-muted-foreground">
-                ou cliquez pour sélectionner un fichier (.txt, .conf, .cfg)
-              </p>
-            </div>
-          )}
-        </div>
-        
-        {uploadedFile && (
-          <Button 
-            className="w-full mt-4" 
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Changer de fichier
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  );
+  return null;
 };
 
 export default FileUpload;

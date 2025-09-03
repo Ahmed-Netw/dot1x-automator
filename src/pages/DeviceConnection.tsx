@@ -68,6 +68,9 @@ export default function DeviceConnection() {
   const [switchUsername, setSwitchUsername] = useState('');
   const [switchPassword, setSwitchPassword] = useState('');
   
+  // Commande à exécuter sur le switch
+  const [switchCommand, setSwitchCommand] = useState('show configuration | display set | no-more');
+  
   // Custom switch rows
   const [customRows, setCustomRows] = useState<CustomSwitchRow[]>([]);
   const [configuration, setConfiguration] = useState('');

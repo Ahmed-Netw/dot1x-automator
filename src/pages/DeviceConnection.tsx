@@ -33,6 +33,16 @@ interface CustomSwitchRow {
   username: string;
   password: string;
 }
+
+interface SwitchResult {
+  id: string;
+  ip: string;
+  username: string;
+  hostname?: string;
+  configuration?: string;
+  status: 'idle' | 'running' | 'success' | 'error';
+  error?: string;
+}
 export default function DeviceConnection() {
   // Force recompilation - all "robont" references changed to "rebond"
   console.log('DeviceConnection loaded with rebond variables');
@@ -56,6 +66,10 @@ export default function DeviceConnection() {
   });
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionStep, setConnectionStep] = useState<string>('');
+  
+  // Multi-switch results
+  const [results, setResults] = useState<SwitchResult[]>([]);
+  const [isRetrievingAll, setIsRetrievingAll] = useState(false);
 
   // État pour le script externe
   const [scriptConfigPath, setScriptConfigPath] = useState('C:\\Configurations');
@@ -127,6 +141,16 @@ export default function DeviceConnection() {
 
     // Si aucun hostname trouvé, utiliser l'IP
     return `switch_${switchIp.replace(/\./g, '_')}`;
+  };
+
+  // Fonction pour nettoyer les noms de fichiers (ASCII uniquement)
+  const sanitizeFilename = (filename: string): string => {
+    return filename
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Retirer les accents
+      .replace(/[^a-zA-Z0-9._-]/g, '_') // Remplacer caractères non alphanumériques
+      .replace(/_+/g, '_') // Fusionner les underscores multiples
+      .replace(/^_|_$/g, ''); // Retirer les underscores de début/fin
   };
   const generateMockConfiguration = (switchIp: string): string => {
     const timestamp = new Date().toLocaleString('fr-FR');
@@ -316,6 +340,186 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
         variant: "destructive"
       });
     }
+  };
+
+  // Fonction pour récupérer les configurations de tous les switches
+  const handleRetrieveAllConfigurations = async () => {
+    // Construire la liste des cibles
+    const targets: Array<{ip: string, username: string, password: string}> = [];
+    
+    // Inclure le switch principal s'il est renseigné
+    if (switchIp.trim()) {
+      // Séparer les IPs multiples par virgule
+      const ips = switchIp.split(',').map(ip => ip.trim()).filter(ip => ip);
+      ips.forEach(ip => {
+        targets.push({
+          ip,
+          username: switchUsername,
+          password: switchPassword
+        });
+      });
+    }
+    
+    // Inclure les lignes personnalisées qui ont une IP
+    customRows.forEach(row => {
+      if (row.ip.trim()) {
+        targets.push({
+          ip: row.ip.trim(),
+          username: row.username || switchUsername,
+          password: row.password || switchPassword
+        });
+      }
+    });
+    
+    // Dédupliquer par IP
+    const uniqueTargets = targets.reduce((acc, target) => {
+      if (!acc.find(t => t.ip === target.ip)) {
+        acc.push(target);
+      }
+      return acc;
+    }, [] as typeof targets);
+    
+    if (uniqueTargets.length === 0) {
+      toast({
+        title: "Aucune cible",
+        description: "Aucun switch n'est configuré",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validation des identifiants Rebond
+    if (!rebondUsername || !rebondPassword) {
+      toast({
+        title: "Champs manquants",
+        description: "Veuillez saisir les identifiants du serveur Rebond",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsRetrievingAll(true);
+    
+    // Initialiser les résultats
+    const initialResults: SwitchResult[] = uniqueTargets.map((target, index) => ({
+      id: `result_${index}`,
+      ip: target.ip,
+      username: target.username,
+      status: 'idle'
+    }));
+    
+    setResults(initialResults);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Traiter chaque switch séquentiellement
+    for (let i = 0; i < uniqueTargets.length; i++) {
+      const target = uniqueTargets[i];
+      const resultId = `result_${i}`;
+      
+      // Mettre à jour le statut en cours
+      setResults(prev => prev.map(r => 
+        r.id === resultId ? { ...r, status: 'running' } : r
+      ));
+      
+      try {
+        let result: any = null;
+        
+        if (tauriInvoke) {
+          // Mode desktop
+          result = await tauriInvoke('run_rebond_script', {
+            rebond_ip: rebondServerIp,
+            rebond_username: rebondUsername,
+            rebond_password: rebondPassword,
+            switch_ip: target.ip,
+            switch_username: target.username,
+            switch_password: target.password
+          });
+        } else if (bridgeServerAvailable) {
+          // Mode bridge server
+          result = await bridgeClient.getConfiguration(
+            rebondServerIp,
+            rebondUsername,
+            rebondPassword,
+            target.ip,
+            target.username,
+            target.password
+          );
+        } else {
+          // Mode simulation
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          result = {
+            success: true,
+            configuration: generateMockConfiguration(target.ip),
+            hostname: `SW-${target.ip.replace(/\./g, '-')}`
+          };
+        }
+        
+        if (result.success && result.configuration) {
+          const hostname = result.hostname || extractHostname(result.configuration) || `switch_${target.ip.replace(/\./g, '_')}`;
+          
+          setResults(prev => prev.map(r => 
+            r.id === resultId ? {
+              ...r,
+              status: 'success',
+              configuration: result.configuration,
+              hostname
+            } : r
+          ));
+          
+          successCount++;
+        } else {
+          throw new Error(result.message || result.error || 'Récupération échouée');
+        }
+        
+      } catch (error: any) {
+        setResults(prev => prev.map(r => 
+          r.id === resultId ? {
+            ...r,
+            status: 'error',
+            error: error.message || 'Erreur de connexion'
+          } : r
+        ));
+        
+        errorCount++;
+      }
+    }
+    
+    setIsRetrievingAll(false);
+    
+    // Toast de synthèse
+    toast({
+      title: "Récupération terminée",
+      description: `${successCount} succès, ${errorCount} erreur(s) sur ${uniqueTargets.length} switch(es)`,
+      variant: errorCount === 0 ? "default" : "destructive"
+    });
+  };
+  
+  // Fonction pour copier une configuration spécifique
+  const copyConfiguration = (configuration: string) => {
+    navigator.clipboard.writeText(configuration);
+    toast({
+      title: "Copié !",
+      description: "Configuration copiée dans le presse-papiers"
+    });
+  };
+  
+  // Fonction pour télécharger une configuration spécifique
+  const downloadSwitchConfiguration = (configuration: string, hostname?: string, ip?: string) => {
+    const filename = hostname 
+      ? `${sanitizeFilename(hostname)}.txt`
+      : `switch_${sanitizeFilename(ip?.replace(/\./g, '_') || 'unknown')}.txt`;
+    
+    const blob = new Blob([configuration], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
   const handleConnect = async () => {
     // Validation des champs même en mode simulation
@@ -1262,11 +1466,35 @@ set vlans default vlan-id 1`;
                 </div>}
 
               <div className="flex gap-2">
-                {!connectionStatus.isConnected ? <Button onClick={handleConnect} disabled={isConnecting} className="flex-1">
-                    {isConnecting ? "Connexion en cours..." : isDesktopApp ? "Se connecter (Desktop SSH)" : bridgeServerAvailable ? "Se connecter (Bridge SSH)" : "Mode simulation (web)"}
-                  </Button> : <Button onClick={handleDisconnect} variant="destructive" className="flex-1">
+                {!connectionStatus.isConnected ? (
+                  <>
+                    <Button onClick={handleConnect} disabled={isConnecting || isRetrievingAll} className="flex-1">
+                      {isConnecting ? "Connexion en cours..." : isDesktopApp ? "Se connecter (Desktop SSH)" : bridgeServerAvailable ? "Se connecter (Bridge SSH)" : "Mode simulation (web)"}
+                    </Button>
+                    {/* Bouton pour récupérer toutes les configurations */}
+                    {(switchIp.trim() || customRows.some(row => row.ip.trim())) && (
+                      <Button 
+                        variant="secondary" 
+                        onClick={handleRetrieveAllConfigurations} 
+                        disabled={isConnecting || isRetrievingAll}
+                        className="flex-1"
+                      >
+                        {isRetrievingAll ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Récupération...
+                          </>
+                        ) : (
+                          "Récupérer tous les switches"
+                        )}
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <Button onClick={handleDisconnect} variant="destructive" className="flex-1">
                     Se déconnecter
-                  </Button>}
+                  </Button>
+                )}
               </div>
 
               {connectionStatus.isConnected && <div className="space-y-2">
@@ -1295,26 +1523,108 @@ set vlans default vlan-id 1`;
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
-              {configuration ? <div className="space-y-4">
+              {/* Affichage des résultats multiples */}
+              {results.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    {results.length} switch(es) configuré(s)
+                  </div>
+                  {results.map((result) => (
+                    <div key={result.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono">{result.ip}</Badge>
+                          {result.hostname && (
+                            <Badge variant="secondary">{result.hostname}</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {result.status === 'running' && (
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          )}
+                          {result.status === 'success' && (
+                            <Badge className="bg-green-500/10 text-green-500 border-green-500/30">
+                              Succès
+                            </Badge>
+                          )}
+                          {result.status === 'error' && (
+                            <Badge variant="destructive">
+                              Erreur
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {result.status === 'error' && result.error && (
+                        <div className="p-2 bg-destructive/10 border border-destructive/30 rounded text-sm text-destructive">
+                          {result.error}
+                        </div>
+                      )}
+                      
+                      {result.status === 'success' && result.configuration && (
+                        <div className="space-y-2">
+                          <Collapsible>
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full hover:bg-muted/50 p-2 rounded transition-colors text-left">
+                              <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
+                              <span className="text-sm font-medium">Voir la configuration</span>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2">
+                              <Textarea 
+                                value={result.configuration} 
+                                readOnly 
+                                className="min-h-48 font-mono text-xs bg-muted/50" 
+                              />
+                            </CollapsibleContent>
+                          </Collapsible>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => copyConfiguration(result.configuration!)}
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copier
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => downloadSwitchConfiguration(result.configuration!, result.hostname, result.ip)}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              Télécharger
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : configuration ? (
+                /* Affichage simple pour un seul switch (compatibilité) */
+                <div className="space-y-4">
                   <Textarea value={configuration} readOnly className="min-h-96 font-mono text-sm bg-muted/50" />
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" onClick={() => {
-                  navigator.clipboard.writeText(configuration);
-                  toast({
-                    title: "Copié !",
-                    description: "Configuration copiée dans le presse-papiers"
-                  });
-                }}>
+                      navigator.clipboard.writeText(configuration);
+                      toast({
+                        title: "Copié !",
+                        description: "Configuration copiée dans le presse-papiers"
+                      });
+                    }}>
                       Copier la configuration
                     </Button>
                     <Button variant="outline" onClick={downloadConfiguration}>
                       Télécharger ({extractedHostname || 'switch'}.txt)
                     </Button>
                   </div>
-                </div> : <div className="text-center py-12 text-muted-foreground">
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
                   <Terminal className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>{isDesktopApp ? "Connectez-vous pour afficher la configuration" : "Mode web - La configuration réelle n'est disponible qu'en mode desktop"}</p>
-                </div>}
+                </div>
+              )}
             </CardContent>
           </Card>
 

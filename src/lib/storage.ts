@@ -6,6 +6,7 @@ export interface DeviceConnectionForm {
   switchIp: string;
   switchUsername: string;
   switchPassword: string;
+  switchCommand: string;
   customRows: Array<{
     id: string;
     ip: string;

@@ -153,7 +153,8 @@ export class BridgeClient {
     rebondPassword: string,
     switchIp: string,
     switchUsername: string,
-    switchPassword: string
+    switchPassword: string,
+    switchCommand?: string
   ): Promise<BridgeResponse<ConfigurationData>> {
     if (!this.isAvailable) {
       throw new Error('Bridge server non disponible');
@@ -172,7 +173,8 @@ export class BridgeClient {
           rebond_password: rebondPassword,
           switch_ip: switchIp,
           switch_username: switchUsername,
-          switch_password: switchPassword
+          switch_password: switchPassword,
+          switch_command: switchCommand || 'show configuration | display set | no-more'
         }),
       });
 
@@ -235,8 +237,9 @@ export const useBridge = () => {
       rebondPassword: string,
       switchIp: string,
       switchUsername: string,
-      switchPassword: string
-    ) => bridgeClient.getConfiguration(rebondIp, rebondUsername, rebondPassword, switchIp, switchUsername, switchPassword),
+      switchPassword: string,
+      switchCommand?: string
+    ) => bridgeClient.getConfiguration(rebondIp, rebondUsername, rebondPassword, switchIp, switchUsername, switchPassword, switchCommand),
     get available() {
       return bridgeClient.available;
     },

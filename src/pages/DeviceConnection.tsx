@@ -180,7 +180,7 @@ export default function DeviceConnection() {
 # Serveur Rebond: ${rebondServerIp}
 # Switch IP: ${switchIp}
 # Switch Hostname: ${hostname}
-# Commande: show configuration | display set | no-more
+# Commande: ${switchCommand}
 #==================================================
 
 set version 20.4R3.8
@@ -995,7 +995,7 @@ Téléchargé depuis l'application Network Management Tools
         const mockContent = `# Configuration récupérée le 2024-12-01 14:30:22
 # Switch IP: 192.168.1.10
 # Hostname: ${filename.split('_')[0]}
-# Commande: show configuration | display set | no-more
+# Commande: ${switchCommand}
 # Récupéré via serveur Rebond
 #==================================================
 
@@ -1057,7 +1057,7 @@ set vlans default vlan-id 1`;
               </Badge>
             </div>
             <strong>Architecture:</strong> Serveur Rebond (6.91.128.111) → Switch cible<br />
-            <strong>Commande exécutée:</strong> show configuration | display set | no-more
+            <strong>Commande exécutée:</strong> {switchCommand}
             {!isDesktopApp && <>
                 <br /><strong>Note:</strong> Pour récupérer de vraies configurations, utilisez l'application desktop avec <code>cargo tauri dev</code>
               </>}
@@ -1502,7 +1502,7 @@ set vlans default vlan-id 1`;
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  Connexion SSH sécurisée via serveur Rebond → show configuration | display set | no-more
+                  Connexion SSH sécurisée via serveur Rebond → {switchCommand}
                 </span>
               </div>
               {isConnecting && connectionStep && <div className="p-3 bg-muted/50 rounded-lg">
@@ -1563,7 +1563,7 @@ set vlans default vlan-id 1`;
                 Configuration du Switch
               </CardTitle>
               <CardDescription>
-                Résultat de "show configuration | display set | no-more"
+                Résultat de "{switchCommand}"
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1">

@@ -1499,9 +1499,6 @@ set vlans default vlan-id 1`;
               <div className="space-y-2">
                 <div className="flex gap-2">
                   
-                  <Button variant="outline" size="sm" onClick={handleTestRebond} className="flex-1">
-                    Test Connexion
-                  </Button>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => handlePing('switch')} className="w-full" disabled={!switchIp}>
                   Ping Switch ({switchIp || 'IP non saisie'})

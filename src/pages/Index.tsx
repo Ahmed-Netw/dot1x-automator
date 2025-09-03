@@ -25,8 +25,13 @@ const Index = () => {
 
   // Vérifier si un fichier a été envoyé depuis DeviceConnection
   useEffect(() => {
-    if (location.state && location.state.content && location.state.filename) {
-      handleFileRead(location.state.content, location.state.filename);
+    if (location.state) {
+      const content = location.state.content || location.state.fileContent;
+      const filename = location.state.filename;
+      
+      if (content && filename) {
+        handleFileRead(content, filename);
+      }
     }
   }, [location.state]);
 

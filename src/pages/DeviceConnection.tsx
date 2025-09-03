@@ -1638,7 +1638,7 @@ set vlans default vlan-id 1`;
                             </CollapsibleContent>
                           </Collapsible>
                           
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-3 gap-2">
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -1655,6 +1655,14 @@ set vlans default vlan-id 1`;
                               <Download className="mr-2 h-4 w-4" />
                               Télécharger
                             </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => transferToJuniper(result.configuration!, result.hostname)}
+                            >
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              Transférer vers Juniper
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -1665,7 +1673,7 @@ set vlans default vlan-id 1`;
                 /* Affichage simple pour un seul switch (compatibilité) */
                 <div className="space-y-4">
                   <Textarea value={configuration} readOnly className="min-h-96 font-mono text-sm bg-muted/50" />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <Button variant="outline" onClick={() => {
                       navigator.clipboard.writeText(configuration);
                       toast({
@@ -1677,6 +1685,10 @@ set vlans default vlan-id 1`;
                     </Button>
                     <Button variant="outline" onClick={downloadConfiguration}>
                       Télécharger ({extractedHostname || 'switch'}.txt)
+                    </Button>
+                    <Button variant="outline" onClick={() => transferToJuniper(configuration, extractedHostname)}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Transférer vers Juniper
                     </Button>
                   </div>
                 </div>
@@ -1716,5 +1728,25 @@ set vlans default vlan-id 1`;
 
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Télécharger et transférer la configuration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous télécharger la configuration et l'envoyer vers l'outil Juniper Configuration Tool ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelTransfer}>
+              Juste télécharger
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmTransfer}>
+              Télécharger et transférer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }

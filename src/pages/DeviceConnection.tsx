@@ -12,6 +12,7 @@ import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText,
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
 import { FileUpload } from '@/components/FileUpload';
+import MultiSwitchBatch from '@/components/MultiSwitchBatch';
 import { bridgeClient } from '@/lib/bridge';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
@@ -1174,6 +1175,15 @@ set vlans default vlan-id 1`;
                 </div>}
             </CardContent>
           </Card>
+
+          {/* Mode Multi-Switch */}
+          <MultiSwitchBatch
+            rebondServerIp={rebondServerIp}
+            rebondUsername={rebondUsername}
+            rebondPassword={rebondPassword}
+            isDesktopApp={isDesktopApp}
+            bridgeServerAvailable={bridgeServerAvailable}
+          />
 
           {/* Affichage de la configuration */}
           <Card className="h-full flex flex-col">

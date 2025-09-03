@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { saveJuniperUpload, loadJuniperUpload } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 
 import { SwitchInfo } from '@/components/SwitchInfo';
@@ -21,17 +22,29 @@ const Index = () => {
     setConfigContent(content);
     setFilename(name);
     setParser(new ConfigurationParser(content));
+    // Save to storage for persistence
+    saveJuniperUpload({ configContent: content, filename: name });
   };
 
-  // Vérifier si un fichier a été envoyé depuis DeviceConnection
+  // Load saved data and check for transferred data
   useEffect(() => {
+    // Priority 1: Data transferred from DeviceConnection via navigation state
     if (location.state) {
       const content = location.state.content || location.state.fileContent;
       const filename = location.state.filename;
       
       if (content && filename) {
         handleFileRead(content, filename);
+        return;
       }
+    }
+    
+    // Priority 2: Load last uploaded file from storage
+    const savedUpload = loadJuniperUpload();
+    if (savedUpload) {
+      setConfigContent(savedUpload.configContent);
+      setFilename(savedUpload.filename);
+      setParser(new ConfigurationParser(savedUpload.configContent));
     }
   }, [location.state]);
 

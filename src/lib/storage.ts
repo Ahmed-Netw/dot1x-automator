@@ -34,11 +34,19 @@ export interface JuniperUpload {
   filename: string;
 }
 
+export interface JuniperMultiUpload {
+  files: Array<{
+    configContent: string;
+    filename: string;
+  }>;
+}
+
 const STORAGE_KEYS = {
   DC_FORM: 'dc_form',
   DC_SINGLE: 'dc_single', 
   DC_RESULTS: 'dc_results',
-  JUNIPER_UPLOAD: 'juniper_last_upload'
+  JUNIPER_UPLOAD: 'juniper_last_upload',
+  JUNIPER_MULTI_UPLOAD: 'juniper_multi_upload'
 } as const;
 
 // Generic storage functions
@@ -105,4 +113,12 @@ export const saveJuniperUpload = (data: JuniperUpload): void => {
 
 export const loadJuniperUpload = (): JuniperUpload | null => {
   return loadFromStorage<JuniperUpload>(STORAGE_KEYS.JUNIPER_UPLOAD);
+};
+
+export const saveJuniperMultiUpload = (data: JuniperMultiUpload): void => {
+  saveToStorage(STORAGE_KEYS.JUNIPER_MULTI_UPLOAD, data);
+};
+
+export const loadJuniperMultiUpload = (): JuniperMultiUpload | null => {
+  return loadFromStorage<JuniperMultiUpload>(STORAGE_KEYS.JUNIPER_MULTI_UPLOAD);
 };

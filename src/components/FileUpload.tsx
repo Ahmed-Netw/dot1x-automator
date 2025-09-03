@@ -5,22 +5,42 @@ import { Upload, FileText, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FileUploadProps {
-  onFileRead: (content: string, filename: string) => void;
+  onFileRead?: (content: string, filename: string) => void;
+  onFilesRead?: (files: { content: string; filename: string }[]) => void;
+  multiple?: boolean;
 }
 
-export const FileUpload = ({ onFileRead }: FileUploadProps) => {
+export const FileUpload = ({ onFileRead, onFilesRead, multiple = false }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileRead = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
-      onFileRead(content, file.name);
+      onFileRead?.(content, file.name);
       setUploadedFile(file.name);
     };
     reader.readAsText(file);
+  };
+
+  const handleMultipleFileRead = async (files: File[]) => {
+    const filePromises = files.map(file => {
+      return new Promise<{ content: string; filename: string }>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          resolve({ content, filename: file.name });
+        };
+        reader.readAsText(file);
+      });
+    });
+
+    const results = await Promise.all(filePromises);
+    onFilesRead?.(results);
+    setUploadedFiles(results.map(r => r.filename));
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -29,14 +49,23 @@ export const FileUpload = ({ onFileRead }: FileUploadProps) => {
     
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      handleFileRead(files[0]);
+      if (multiple && files.length > 1) {
+        handleMultipleFileRead(files);
+      } else {
+        handleFileRead(files[0]);
+      }
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files && files[0]) {
-      handleFileRead(files[0]);
+    if (files) {
+      const fileArray = Array.from(files);
+      if (multiple && fileArray.length > 1) {
+        handleMultipleFileRead(fileArray);
+      } else if (fileArray[0]) {
+        handleFileRead(fileArray[0]);
+      }
     }
   };
 
@@ -73,31 +102,46 @@ export const FileUpload = ({ onFileRead }: FileUploadProps) => {
             ref={fileInputRef}
             type="file"
             accept=".txt,.conf,.cfg"
+            multiple={multiple}
             onChange={handleFileSelect}
             className="hidden"
           />
           
-          {uploadedFile ? (
+          {(uploadedFile || uploadedFiles.length > 0) ? (
             <div className="space-y-2">
               <Check className="h-12 w-12 text-green-500 mx-auto" />
               <p className="text-lg font-medium text-green-700">
-                Fichier téléchargé avec succès
+                {uploadedFiles.length > 0 
+                  ? `${uploadedFiles.length} fichiers téléchargés avec succès`
+                  : 'Fichier téléchargé avec succès'
+                }
               </p>
-              <p className="text-sm text-green-600 font-mono">
-                {uploadedFile}
-              </p>
+              {uploadedFiles.length > 0 ? (
+                <div className="space-y-1">
+                  {uploadedFiles.map((filename, index) => (
+                    <p key={index} className="text-sm text-green-600 font-mono">
+                      {filename}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-green-600 font-mono">
+                  {uploadedFile}
+                </p>
+              )}
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   setUploadedFile(null);
+                  setUploadedFiles([]);
                   if (fileInputRef.current) {
                     fileInputRef.current.value = '';
                   }
                 }}
               >
-                Changer de fichier
+                {uploadedFiles.length > 0 ? 'Changer les fichiers' : 'Changer de fichier'}
               </Button>
             </div>
           ) : (
@@ -105,10 +149,16 @@ export const FileUpload = ({ onFileRead }: FileUploadProps) => {
               <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
               <div>
                 <p className="text-lg font-medium">
-                  Glissez votre fichier de configuration ici
+                  {multiple 
+                    ? 'Glissez vos fichiers de configuration ici'
+                    : 'Glissez votre fichier de configuration ici'
+                  }
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  ou cliquez pour sélectionner un fichier
+                  {multiple 
+                    ? 'ou cliquez pour sélectionner des fichiers'
+                    : 'ou cliquez pour sélectionner un fichier'
+                  }
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">

@@ -1501,18 +1501,6 @@ set vlans default vlan-id 1`;
                   
                 </div>
                 
-                <Button variant="outline" size="sm" onClick={() => {
-                const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;
-                navigator.clipboard.writeText(command);
-                toast({
-                  title: "Commande copiée",
-                  description: "La commande CLI a été copiée dans le presse-papier (le fichier sera sauvé dans le répertoire du script)"
-                });
-              }} disabled={!rebondUsername || !rebondPassword || !switchIp || !switchUsername} className="w-full">
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copier la commande CLI
-                </Button>
-                
                 <p className="text-xs text-muted-foreground">
                   💡 <strong>Prérequis:</strong> sshpass doit être installé sur le serveur Rebond
                 </p>

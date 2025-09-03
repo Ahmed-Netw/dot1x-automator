@@ -10,6 +10,8 @@ interface SwitchInfo {
   hostname?: string;
   managementIp?: string;
   vlan160Ip?: string;
+  vlan160Cidr?: string;
+  vlan160NetworkCidr?: string;
 }
 
 export class ConfigurationParser {
@@ -17,6 +19,20 @@ export class ConfigurationParser {
   
   constructor(config: string) {
     this.config = config;
+  }
+
+  private calculateNetworkAddress(ip: string, prefixLength: number): string {
+    const ipParts = ip.split('.').map(Number);
+    const mask = (0xFFFFFFFF << (32 - prefixLength)) >>> 0;
+    const ipInt = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
+    const networkInt = (ipInt & mask) >>> 0;
+    
+    return [
+      (networkInt >>> 24) & 0xFF,
+      (networkInt >>> 16) & 0xFF,
+      (networkInt >>> 8) & 0xFF,
+      networkInt & 0xFF
+    ].join('.');
   }
 
   getSwitchInfo(): SwitchInfo {
@@ -34,8 +50,16 @@ export class ConfigurationParser {
       // PRIORITY: Extract VLAN 160 (VL160_ADMIN) IP address - enhanced to include IRB
       const vlan160Match = trimmed.match(/^set interfaces (?:vlan|irb)(?:\.| unit )160 .*family inet address (\S+)/);
       if (vlan160Match) {
-        const ip = vlan160Match[1].split('/')[0];
+        const fullCidr = vlan160Match[1]; // e.g., "10.147.160.10/24"
+        const [ip, prefixLength] = fullCidr.split('/');
         info.vlan160Ip = ip;
+        info.vlan160Cidr = fullCidr;
+        
+        if (prefixLength) {
+          const networkIp = this.calculateNetworkAddress(ip, parseInt(prefixLength));
+          info.vlan160NetworkCidr = `${networkIp}/${prefixLength}`;
+        }
+        
         info.managementIp = ip; // VLAN 160 is the management IP
         continue;
       }

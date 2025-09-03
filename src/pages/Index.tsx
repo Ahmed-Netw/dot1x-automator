@@ -285,6 +285,7 @@ const Index = () => {
                             hostname={result.switchInfo?.hostname}
                             managementIp={result.switchInfo?.managementIp}
                             vlan160Ip={result.switchInfo?.vlan160Ip}
+                            vlan160NetworkCidr={result.switchInfo?.vlan160NetworkCidr}
                             interfaceCount={result.interfaces.length}
                           />
 

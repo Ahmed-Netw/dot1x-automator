@@ -6,10 +6,11 @@ interface SwitchInfoProps {
   hostname?: string;
   managementIp?: string;
   vlan160Ip?: string;
+  vlan160NetworkCidr?: string;
   interfaceCount: number;
 }
 
-export const SwitchInfo = ({ hostname, managementIp, vlan160Ip, interfaceCount }: SwitchInfoProps) => {
+export const SwitchInfo = ({ hostname, managementIp, vlan160Ip, vlan160NetworkCidr, interfaceCount }: SwitchInfoProps) => {
   return (
     <Card>
       <CardHeader>
@@ -22,7 +23,7 @@ export const SwitchInfo = ({ hostname, managementIp, vlan160Ip, interfaceCount }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
             <Server className="h-4 w-4 text-tech-primary" />
             <div>
@@ -44,6 +45,14 @@ export const SwitchInfo = ({ hostname, managementIp, vlan160Ip, interfaceCount }
             <div>
               <p className="text-sm font-medium">VLAN 160 Admin</p>
               <p className="text-lg">{vlan160Ip || 'Non trouvé'}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <Globe className="h-4 w-4 text-tech-warning" />
+            <div>
+              <p className="text-sm font-medium">Adresse réseau</p>
+              <p className="text-lg">{vlan160NetworkCidr || 'Non trouvé'}</p>
             </div>
           </div>
           

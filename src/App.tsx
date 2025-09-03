@@ -26,7 +26,7 @@ const App = () => (
                 <img 
                   src="/lovable-uploads/72d5b4f9-d4b1-4fc0-882e-1c0d60b03291.png" 
                   alt="Orange Business Services" 
-                  className="h-8 ml-4"
+                  className="h-8 ml-2"
                 />
                 <SidebarTrigger className="ml-4" />
                 <h2 className="ml-4 text-lg font-semibold">Network Management Tools</h2>

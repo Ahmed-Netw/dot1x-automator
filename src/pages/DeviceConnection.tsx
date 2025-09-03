@@ -532,6 +532,16 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       return;
     }
 
+    // Si plusieurs IPs sont détectées, utiliser automatiquement la récupération multiple
+    const allIps = switchIp.split(',').map(ip => ip.trim()).filter(ip => ip);
+    const hasCustomRows = customRows.some(row => row.ip.trim());
+    
+    if (allIps.length > 1 || hasCustomRows) {
+      // Déclencher automatiquement la récupération de toutes les configurations
+      await handleRetrieveAllConfigurations();
+      return;
+    }
+
     // 1. Mode Desktop (Tauri) - connexion réelle via Tauri
     if (tauriInvoke) {
       // ... keep existing code (desktop mode implementation)

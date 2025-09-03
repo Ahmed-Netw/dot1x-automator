@@ -522,15 +522,8 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       ? `${sanitizeFilename(hostname)}.txt`
       : `switch_${sanitizeFilename(ip?.replace(/\./g, '_') || 'unknown')}.txt`;
     
-    const blob = new Blob([configuration], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setPendingTransfer({ content: configuration, filename });
+    setConfirmOpen(true);
   };
   const handleConnect = async () => {
     // Validation des champs même en mode simulation

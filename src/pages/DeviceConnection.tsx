@@ -1500,9 +1500,6 @@ set vlans default vlan-id 1`;
                 <div className="flex gap-2">
                   
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handlePing('switch')} className="w-full" disabled={!switchIp}>
-                  Ping Switch ({switchIp || 'IP non saisie'})
-                </Button>
                 
                 <Button variant="outline" size="sm" onClick={() => {
                 const command = `python rebond_fetch_config.py ${rebondServerIp} "${rebondUsername}" "${rebondPassword}" ${switchIp} "${switchUsername}" "${switchPassword}"`;

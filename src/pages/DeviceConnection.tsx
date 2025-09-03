@@ -7,6 +7,7 @@ import {
   loadSingleConfiguration,
   saveMultiSwitchResults,
   loadMultiSwitchResults,
+  saveJuniperMultiUpload,
   clearAllStorage
 } from '@/lib/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -582,6 +583,43 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
         variant: "destructive"
       });
     }
+  };
+
+  // Fonction pour transférer toutes les configurations vers Juniper
+  const transferAllToJuniper = () => {
+    const successfulResults = results.filter(result => result.status === 'success' && result.configuration);
+    
+    if (successfulResults.length === 0) {
+      toast({
+        title: "Aucune configuration",
+        description: "Aucune configuration valide à transférer",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Préparer les fichiers pour le transfert
+    const files = successfulResults.map(result => {
+      const filename = result.hostname 
+        ? `${sanitizeFilename(result.hostname)}.txt`
+        : `switch_${sanitizeFilename(result.ip.replace(/\./g, '_'))}.txt`;
+      
+      return {
+        configContent: result.configuration!,
+        filename: filename
+      };
+    });
+
+    // Sauvegarder dans le storage
+    saveJuniperMultiUpload({ files });
+
+    // Naviguer vers la page Juniper
+    navigate('/juniper-config');
+    
+    toast({
+      title: "Transfert réussi",
+      description: `${files.length} configuration(s) transférée(s) vers Juniper Configuration Tool`
+    });
   };
   const handleConnect = async () => {
     // Validation des champs même en mode simulation
@@ -1620,14 +1658,24 @@ set vlans default vlan-id 1`;
                       {results.length} switch(es) configuré(s)
                     </div>
                     {results.some(r => r.status === 'success' && r.configuration) && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={downloadAllSwitchConfigs}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        Tout télécharger (.zip)
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={downloadAllSwitchConfigs}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Tout télécharger (.zip)
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={transferAllToJuniper}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Tous Transférer vers Juniper
+                        </Button>
+                      </div>
                     )}
                   </div>
                   {results.map((result) => (

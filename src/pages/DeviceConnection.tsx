@@ -1095,8 +1095,16 @@ set vlans default vlan-id 1`;
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="switch-ip">Adresse IP *</Label>
-                    <Input id="switch-ip" placeholder="192.168.1.10" value={switchIp} onChange={e => setSwitchIp(e.target.value)} disabled={connectionStatus.isConnected} />
+                    <Label htmlFor="switch-ip">Adresse IP * (une seule ou plusieurs séparées par des virgules)</Label>
+                    <Textarea 
+                      id="switch-ip" 
+                      placeholder="192.168.1.10 ou 192.168.1.10, 192.168.1.11, 192.168.1.12" 
+                      value={switchIp} 
+                      onChange={e => setSwitchIp(e.target.value)} 
+                      disabled={connectionStatus.isConnected}
+                      rows={2}
+                      className="resize-none"
+                    />
                   </div>
                   
                   <div className="space-y-2">

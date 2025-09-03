@@ -6,6 +6,7 @@ import { SwitchInfo } from '@/components/SwitchInfo';
 import { InterfaceList } from '@/components/InterfaceList';
 import { ConfigurationOutput } from '@/components/ConfigurationOutput';
 import { ConfigurationParser } from '@/components/ConfigurationParser';
+import { FileUpload } from '@/components/FileUpload';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Router, Network, Bug, ChevronDown } from 'lucide-react';
@@ -79,6 +80,8 @@ const Index = () => {
         </div>
 
         <div className="space-y-8">
+          {/* File Upload */}
+          <FileUpload onFileRead={handleFileRead} />
 
           {/* Show results only if file is uploaded */}
           {parser && (

@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
 import { FileUpload } from '@/components/FileUpload';
 import { bridgeClient } from '@/lib/bridge';
+import JSZip from 'jszip';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
 let tauriInvoke: any = null;
@@ -534,6 +535,53 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     
     setPendingTransfer({ content: configuration, filename });
     setConfirmOpen(true);
+  };
+
+  // Fonction pour télécharger toutes les configurations en ZIP
+  const downloadAllSwitchConfigs = async () => {
+    const successfulResults = results.filter(result => result.status === 'success' && result.configuration);
+    
+    if (successfulResults.length === 0) {
+      toast({
+        title: "Aucune configuration",
+        description: "Aucune configuration valide à télécharger",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const zip = new JSZip();
+      
+      successfulResults.forEach(result => {
+        const filename = result.hostname 
+          ? `${sanitizeFilename(result.hostname)}.txt`
+          : `switch_${sanitizeFilename(result.ip.replace(/\./g, '_'))}.txt`;
+        zip.file(filename, result.configuration!);
+      });
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = window.URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `switch_configurations_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Téléchargement réussi",
+        description: `${successfulResults.length} configuration(s) téléchargée(s) en ZIP`
+      });
+    } catch (error) {
+      console.error('Erreur lors de la création du ZIP:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le fichier ZIP",
+        variant: "destructive"
+      });
+    }
   };
   const handleConnect = async () => {
     // Validation des champs même en mode simulation
@@ -1567,8 +1615,20 @@ set vlans default vlan-id 1`;
               {/* Affichage des résultats multiples */}
               {results.length > 0 ? (
                 <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
-                    {results.length} switch(es) configuré(s)
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      {results.length} switch(es) configuré(s)
+                    </div>
+                    {results.some(r => r.status === 'success' && r.configuration) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={downloadAllSwitchConfigs}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Tout télécharger (.zip)
+                      </Button>
+                    )}
                   </div>
                   {results.map((result) => (
                     <div key={result.id} className="border rounded-lg p-4 space-y-3">

@@ -58,8 +58,8 @@ export default function DeviceConnection() {
   // Force recompilation - all "robont" references changed to "rebond"
   console.log('DeviceConnection loaded with rebond variables');
 
-  // Serveur rebond (IP fixe selon le script)
-  const [rebondServerIp] = useState('6.91.128.111');
+  // Serveur rebond (IP modifiable)
+  const [rebondServerIp, setRebondServerIp] = useState('6.91.128.111');
   const [rebondUsername, setRebondUsername] = useState('');
   const [rebondPassword, setRebondPassword] = useState('');
 
@@ -1360,7 +1360,12 @@ set vlans default vlan-id 1`;
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="rebond-ip">Adresse IP</Label>
-                    <Input id="rebond-ip" value={rebondServerIp} disabled className="bg-muted" />
+                    <Input 
+                      id="rebond-ip" 
+                      value={rebondServerIp} 
+                      onChange={(e) => setRebondServerIp(e.target.value)}
+                      placeholder="Ex: 6.91.128.111"
+                    />
                   </div>
                   
                   <div className="space-y-2">

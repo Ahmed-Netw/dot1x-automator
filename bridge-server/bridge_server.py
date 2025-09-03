@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 from typing import Optional, Dict, Any
+import sys
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Network Management Bridge Server", version="1.0.0")
 
-# Configuration CORS pour permettre les requêtes depuis l'app web
+# Configuration CORS pour permettre les requÃªtes depuis l'app web
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*\.lovable\.(app|dev)$|^null$",
@@ -30,7 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Modèles de données
+# ModÃ¨les de donnÃ©es
 class PingRequest(BaseModel):
     host: str
 
@@ -48,7 +49,7 @@ class ConfigurationRequest(BaseModel):
     switch_username: str
     switch_password: str
 
-# État global
+# Ã‰tat global
 server_status = {
     "status": "ok",
     "version": "1.0.0",
@@ -57,12 +58,12 @@ server_status = {
 
 @app.get("/health")
 async def health_check():
-    """Vérification de santé du serveur bridge"""
+    """VÃ©rification de santÃ© du serveur bridge"""
     return server_status
 
 @app.post("/ping-device")
 async def ping_device(request: PingRequest):
-    """Ping un périphérique réseau"""
+    """Ping un pÃ©riphÃ©rique rÃ©seau"""
     try:
         logger.info(f"Ping vers {request.host}")
         
@@ -91,7 +92,7 @@ async def ping_device(request: PingRequest):
         return {
             "success": success,
             "host": request.host,
-            "message": "Ping réussi" if success else "Ping échoué",
+            "message": "Ping rÃ©ussi" if success else "Ping Ã©chouÃ©",
             "details": result.stdout if success else result.stderr
         }
         
@@ -107,7 +108,7 @@ async def ping_device(request: PingRequest):
 
 @app.post("/test-connection")
 async def test_connection(request: ConnectionRequest):
-    """Test de connexion SSH vers un périphérique"""
+    """Test de connexion SSH vers un pÃ©riphÃ©rique"""
     try:
         logger.info(f"Test connexion SSH vers {request.host}")
         
@@ -117,7 +118,7 @@ async def test_connection(request: ConnectionRequest):
         except ImportError:
             raise HTTPException(
                 status_code=500, 
-                detail="Paramiko non installé. Exécutez: pip install paramiko"
+                detail="Paramiko non installÃ©. ExÃ©cutez: pip install paramiko"
             )
         
         # Tentative de connexion SSH
@@ -134,7 +135,7 @@ async def test_connection(request: ConnectionRequest):
                 look_for_keys=False
             )
             
-            # Test d'exécution d'une commande simple
+            # Test d'exÃ©cution d'une commande simple
             stdin, stdout, stderr = ssh.exec_command("show version | no-more" if request.device_type == "juniper" else "show version")
             output = stdout.read().decode('utf-8', errors='ignore')
             
@@ -155,11 +156,11 @@ async def test_connection(request: ConnectionRequest):
                     "host": request.host,
                     "username": request.username
                 },
-                "message": f"Connexion SSH réussie vers {hostname}"
+                "message": f"Connexion SSH rÃ©ussie vers {hostname}"
             }
             
         except paramiko.AuthenticationException:
-            raise HTTPException(status_code=401, detail="Authentification SSH échouée")
+            raise HTTPException(status_code=401, detail="Authentification SSH Ã©chouÃ©e")
         except paramiko.SSHException as e:
             raise HTTPException(status_code=500, detail=f"Erreur SSH: {str(e)}")
         except Exception as e:
@@ -173,21 +174,21 @@ async def test_connection(request: ConnectionRequest):
 
 @app.post("/get-configuration")
 async def get_configuration(request: ConfigurationRequest):
-    """Récupération de configuration via serveur Rebond"""
+    """RÃ©cupÃ©ration de configuration via serveur Rebond"""
     try:
-        logger.info(f"Récupération config via Rebond {request.rebond_ip} -> {request.switch_ip}")
+        logger.info(f"RÃ©cupÃ©ration config via Rebond {request.rebond_ip} -> {request.switch_ip}")
         
-        # Vérifier que le script rebond_fetch_config.py existe
+        # VÃ©rifier que le script rebond_fetch_config.py existe
         script_path = os.path.join(os.path.dirname(__file__), "rebond_fetch_config.py")
         if not os.path.exists(script_path):
             raise HTTPException(
                 status_code=500, 
-                detail="Script rebond_fetch_config.py non trouvé dans le dossier bridge-server"
+                detail="Script rebond_fetch_config.py non trouvÃ© dans le dossier bridge-server"
             )
         
-        # Préparer la commande
+        # PrÃ©parer la commande
         cmd = [
-            "python3", script_path,
+            sys.executable, script_path,
             request.rebond_ip,
             request.rebond_username,
             request.rebond_password,
@@ -196,24 +197,31 @@ async def get_configuration(request: ConfigurationRequest):
             request.switch_password
         ]
         
-        # Exécuter le script avec timeout
+        # ExÃ©cuter le script avec timeout
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=120,  # 2 minutes de timeout
-            cwd=os.path.dirname(__file__)
+            cwd=os.path.dirname(__file__),
+            env=env
         )
         
         if result.returncode == 0:
-            # Succès - parser la sortie
+            # SuccÃ¨s - parser la sortie
             output = result.stdout
             
-            # Chercher le fichier de configuration généré
+            # Chercher le fichier de configuration gÃ©nÃ©rÃ©
             config_file = None
             for line in output.split('\n'):
-                if "Fichier sauvegardé:" in line:
-                    config_file = line.split("Fichier sauvegardé:")[1].strip()
+                if "Fichier sauvegardÃ©:" in line:
+                    config_file = line.split("Fichier sauvegardÃ©:")[1].strip()
                     break
             
             configuration = ""
@@ -237,21 +245,27 @@ async def get_configuration(request: ConfigurationRequest):
                 "configuration": configuration,
                 "hostname": hostname,
                 "logs": output,
-                "message": "Configuration récupérée avec succès"
+                "message": "Configuration rÃ©cupÃ©rÃ©e avec succÃ¨s"
             }
         else:
             # Erreur
-            error_output = result.stderr or result.stdout
-            logger.error(f"Erreur script rebond: {error_output}")
+            error_output = result.stderr or ""
+            stdout_output = result.stdout or ""
+            diagnostic = (
+                f"ReturnCode={result.returncode}\n"
+                f"STDERR:\n{error_output}\n"
+                f"STDOUT:\n{stdout_output}"
+            )
+            logger.error(f"Erreur script rebond: {diagnostic}")
             raise HTTPException(
                 status_code=500, 
-                detail=f"Erreur script: {error_output}"
+                detail=f"Erreur script rebond_fetch_config.py\n{diagnostic}"
             )
             
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=500, detail="Timeout lors de la récupération (2min)")
+        raise HTTPException(status_code=500, detail="Timeout lors de la rÃ©cupÃ©ration (2min)")
     except Exception as e:
-        logger.error(f"Erreur récupération config: {e}")
+        logger.error(f"Erreur rÃ©cupÃ©ration config: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 @app.get("/")
@@ -262,10 +276,10 @@ async def root():
         "version": server_status["version"],
         "status": server_status["status"],
         "endpoints": {
-            "/health": "Vérification de santé",
-            "/ping-device": "Ping d'un périphérique",
+            "/health": "VÃ©rification de santÃ©",
+            "/ping-device": "Ping d'un pÃ©riphÃ©rique",
             "/test-connection": "Test de connexion SSH",
-            "/get-configuration": "Récupération de configuration via Rebond"
+            "/get-configuration": "RÃ©cupÃ©ration de configuration via Rebond"
         }
     }
 
@@ -273,17 +287,17 @@ if __name__ == "__main__":
     import uvicorn
     
     print("=" * 50)
-    print("🌉 Network Management Bridge Server")
+    print("ðŸŒ‰ Network Management Bridge Server")
     print("=" * 50)
-    print("📍 Serveur: http://127.0.0.1:5001")
-    print("📚 Documentation: http://127.0.0.1:5001/docs")
-    print("🔧 Endpoints disponibles:")
-    print("   • GET  /health - Vérification de santé")
-    print("   • POST /ping-device - Ping d'un périphérique")
-    print("   • POST /test-connection - Test connexion SSH")
-    print("   • POST /get-configuration - Récupération config")
+    print("ðŸ“ Serveur: http://127.0.0.1:5001")
+    print("ðŸ“š Documentation: http://127.0.0.1:5001/docs")
+    print("ðŸ”§ Endpoints disponibles:")
+    print("   â€¢ GET  /health - VÃ©rification de santÃ©")
+    print("   â€¢ POST /ping-device - Ping d'un pÃ©riphÃ©rique")
+    print("   â€¢ POST /test-connection - Test connexion SSH")
+    print("   â€¢ POST /get-configuration - RÃ©cupÃ©ration config")
     print("=" * 50)
-    print("💡 Utilisez Ctrl+C pour arrêter le serveur")
+    print("ðŸ’¡ Utilisez Ctrl+C pour arrÃªter le serveur")
     print("=" * 50)
     
     uvicorn.run(

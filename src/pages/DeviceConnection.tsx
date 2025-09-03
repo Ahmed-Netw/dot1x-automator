@@ -12,7 +12,6 @@ import { Terminal, Network, Lock, AlertTriangle, Download, FolderOpen, FileText,
 import { useToast } from '@/hooks/use-toast';
 import DesktopCompiler from '@/components/DesktopCompiler';
 import { FileUpload } from '@/components/FileUpload';
-import MultiSwitchBatch from '@/components/MultiSwitchBatch';
 import { bridgeClient } from '@/lib/bridge';
 
 // Import conditionnel pour Tauri (ne fonctionnera que dans l'app desktop)
@@ -1114,9 +1113,12 @@ set vlans default vlan-id 1`;
 
               {/* Boutons de test */}
               <div className="space-y-2">
-                <Button variant="outline" size="sm" onClick={handleTestRebond} className="w-full">
-                  Test Connexion
-                </Button>
+                <div className="flex gap-2">
+                  
+                  <Button variant="outline" size="sm" onClick={handleTestRebond} className="flex-1">
+                    Test Connexion
+                  </Button>
+                </div>
                 <Button variant="outline" size="sm" onClick={() => handlePing('switch')} className="w-full" disabled={!switchIp}>
                   Ping Switch ({switchIp || 'IP non saisie'})
                 </Button>
@@ -1170,15 +1172,6 @@ set vlans default vlan-id 1`;
                 </div>}
             </CardContent>
           </Card>
-
-          {/* Mode Multi-Switch */}
-          <MultiSwitchBatch
-            rebondServerIp={rebondServerIp}
-            rebondUsername={rebondUsername}
-            rebondPassword={rebondPassword}
-            isDesktopApp={isDesktopApp}
-            bridgeServerAvailable={bridgeServerAvailable}
-          />
 
           {/* Affichage de la configuration */}
           <Card className="h-full flex flex-col">

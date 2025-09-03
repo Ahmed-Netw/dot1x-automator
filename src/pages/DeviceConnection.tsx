@@ -456,21 +456,24 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
           };
         }
         
-        if (result.success && result.configuration) {
-          const hostname = result.hostname || extractHostname(result.configuration) || `switch_${target.ip.replace(/\./g, '_')}`;
-          
+        const conf = (result && result.data && result.data.configuration) ? result.data.configuration : result.configuration;
+        const host = (result && result.data && result.data.hostname)
+          ? result.data.hostname
+          : (result.hostname || (conf ? extractHostname(conf) : `switch_${target.ip.replace(/\./g, '_')}`));
+        
+        if (result.success && conf) {
           setResults(prev => prev.map(r => 
             r.id === resultId ? {
               ...r,
               status: 'success',
-              configuration: result.configuration,
-              hostname
+              configuration: conf,
+              hostname: host
             } : r
           ));
-          
           successCount++;
         } else {
-          throw new Error(result.message || result.error || 'Récupération échouée');
+          const errMsg = (result && (result.message || result.error || (result.data && result.data.message))) || 'Récupération échouée';
+          throw new Error(errMsg);
         }
         
       } catch (error: any) {

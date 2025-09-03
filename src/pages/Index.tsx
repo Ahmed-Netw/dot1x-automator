@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 import { SwitchInfo } from '@/components/SwitchInfo';
@@ -15,12 +15,20 @@ const Index = () => {
   const [configContent, setConfigContent] = useState<string>('');
   const [filename, setFilename] = useState<string>('');
   const [parser, setParser] = useState<ConfigurationParser | null>(null);
+  const location = useLocation();
 
   const handleFileRead = (content: string, name: string) => {
     setConfigContent(content);
     setFilename(name);
     setParser(new ConfigurationParser(content));
   };
+
+  // Vérifier si un fichier a été envoyé depuis DeviceConnection
+  useEffect(() => {
+    if (location.state && location.state.content && location.state.filename) {
+      handleFileRead(location.state.content, location.state.filename);
+    }
+  }, [location.state]);
 
   const switchInfo = parser?.getSwitchInfo();
   const interfaces = parser?.getInterfaces() || [];

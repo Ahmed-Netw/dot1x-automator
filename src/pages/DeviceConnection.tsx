@@ -83,9 +83,15 @@ export default function DeviceConnection() {
   // État pour le bridge server local
   const [bridgeServerAvailable, setBridgeServerAvailable] = useState(false);
   const [checkingBridge, setCheckingBridge] = useState(false);
-  const {
-    toast
-  } = useToast();
+  
+  // État pour la modale de confirmation de transfert
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingTransfer, setPendingTransfer] = useState<{
+    content: string;
+    filename: string;
+  } | null>(null);
+  
+  const { toast } = useToast();
 
   // Vérification périodique du bridge server
   useEffect(() => {

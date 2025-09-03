@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { FileUpload } from '@/components/FileUpload';
+
 import { SwitchInfo } from '@/components/SwitchInfo';
 import { InterfaceList } from '@/components/InterfaceList';
 import { ConfigurationOutput } from '@/components/ConfigurationOutput';
@@ -79,8 +79,6 @@ const Index = () => {
         </div>
 
         <div className="space-y-8">
-          {/* File Upload */}
-          <FileUpload onFileRead={handleFileRead} />
 
           {/* Show results only if file is uploaded */}
           {parser && (

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Network Management Bridge Server", version="1.0.0")
 
-# Configuration CORS pour permettre les requÃªtes depuis l'app web
+# Configuration CORS pour permettre les requetes depuis l'app web
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*\.lovable\.(app|dev)$|^null$",
@@ -31,7 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ModÃ¨les de donnÃ©es
+# Modeles de donnees
 class PingRequest(BaseModel):
     host: str
 
@@ -49,7 +49,7 @@ class ConfigurationRequest(BaseModel):
     switch_username: str
     switch_password: str
 
-# Ã‰tat global
+# Etat global
 server_status = {
     "status": "ok",
     "version": "1.0.0",
@@ -58,12 +58,12 @@ server_status = {
 
 @app.get("/health")
 async def health_check():
-    """VÃ©rification de santÃ© du serveur bridge"""
+    """Verification de sante du serveur bridge"""
     return server_status
 
 @app.post("/ping-device")
 async def ping_device(request: PingRequest):
-    """Ping un pÃ©riphÃ©rique rÃ©seau"""
+    """Ping un peripherique reseau"""
     try:
         logger.info(f"Ping vers {request.host}")
         
@@ -92,7 +92,7 @@ async def ping_device(request: PingRequest):
         return {
             "success": success,
             "host": request.host,
-            "message": "Ping rÃ©ussi" if success else "Ping Ã©chouÃ©",
+            "message": "Ping reussi" if success else "Ping echoue",
             "details": result.stdout if success else result.stderr
         }
         
@@ -108,7 +108,7 @@ async def ping_device(request: PingRequest):
 
 @app.post("/test-connection")
 async def test_connection(request: ConnectionRequest):
-    """Test de connexion SSH vers un pÃ©riphÃ©rique"""
+    """Test de connexion SSH vers un peripherique"""
     try:
         logger.info(f"Test connexion SSH vers {request.host}")
         
@@ -118,7 +118,7 @@ async def test_connection(request: ConnectionRequest):
         except ImportError:
             raise HTTPException(
                 status_code=500, 
-                detail="Paramiko non installÃ©. ExÃ©cutez: pip install paramiko"
+                detail="Paramiko non installe. Executez: pip install paramiko"
             )
         
         # Tentative de connexion SSH
@@ -135,7 +135,7 @@ async def test_connection(request: ConnectionRequest):
                 look_for_keys=False
             )
             
-            # Test d'exÃ©cution d'une commande simple
+            # Test d'execution d'une commande simple
             stdin, stdout, stderr = ssh.exec_command("show version | no-more" if request.device_type == "juniper" else "show version")
             output = stdout.read().decode('utf-8', errors='ignore')
             
@@ -156,11 +156,11 @@ async def test_connection(request: ConnectionRequest):
                     "host": request.host,
                     "username": request.username
                 },
-                "message": f"Connexion SSH rÃ©ussie vers {hostname}"
+                "message": f"Connexion SSH reussie vers {hostname}"
             }
             
         except paramiko.AuthenticationException:
-            raise HTTPException(status_code=401, detail="Authentification SSH Ã©chouÃ©e")
+            raise HTTPException(status_code=401, detail="Authentification SSH echouee")
         except paramiko.SSHException as e:
             raise HTTPException(status_code=500, detail=f"Erreur SSH: {str(e)}")
         except Exception as e:
@@ -174,19 +174,19 @@ async def test_connection(request: ConnectionRequest):
 
 @app.post("/get-configuration")
 async def get_configuration(request: ConfigurationRequest):
-    """RÃ©cupÃ©ration de configuration via serveur Rebond"""
+    """Recuperation de configuration via serveur Rebond"""
     try:
-        logger.info(f"RÃ©cupÃ©ration config via Rebond {request.rebond_ip} -> {request.switch_ip}")
+        logger.info(f"Recuperation config via Rebond {request.rebond_ip} -> {request.switch_ip}")
         
-        # VÃ©rifier que le script rebond_fetch_config.py existe
+        # Verifier que le script rebond_fetch_config.py existe
         script_path = os.path.join(os.path.dirname(__file__), "rebond_fetch_config.py")
         if not os.path.exists(script_path):
             raise HTTPException(
                 status_code=500, 
-                detail="Script rebond_fetch_config.py non trouvÃ© dans le dossier bridge-server"
+                detail="Script rebond_fetch_config.py non trouve dans le dossier bridge-server"
             )
         
-        # PrÃ©parer la commande
+        # Preparer la commande
         cmd = [
             sys.executable, script_path,
             request.rebond_ip,
@@ -197,7 +197,7 @@ async def get_configuration(request: ConfigurationRequest):
             request.switch_password
         ]
         
-        # ExÃ©cuter le script avec timeout
+        # Executer le script avec timeout
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONUTF8"] = "1"
@@ -208,44 +208,63 @@ async def get_configuration(request: ConfigurationRequest):
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=120,  # 2 minutes de timeout
+            timeout=180,  # 3 minutes de timeout pour les multi-IPs
             cwd=os.path.dirname(__file__),
             env=env
         )
         
         if result.returncode == 0:
-            # SuccÃ¨s - parser la sortie
+            # Succes - parser la sortie
             output = result.stdout
             
-            # Chercher le fichier de configuration gÃ©nÃ©rÃ©
-            config_file = None
+            # Parse les fichiers sauvegardes individuellement
+            saved_files = []
+            config_errors = []
+            
             for line in output.split('\n'):
-                if "Fichier sauvegardÃ©:" in line:
-                    config_file = line.split("Fichier sauvegardÃ©:")[1].strip()
-                    break
+                if line.startswith("CONFIG_SAVED:"):
+                    saved_files.append(line.replace("CONFIG_SAVED:", "").strip())
+                elif line.startswith("CONFIG_ERROR:"):
+                    config_errors.append(line.replace("CONFIG_ERROR:", "").strip())
             
-            configuration = ""
-            if config_file and os.path.exists(config_file):
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    configuration = f.read()
-            else:
-                # Fallback: utiliser la sortie directe si pas de fichier
-                configuration = output
+            # Collecter toutes les configurations
+            all_configurations = []
+            hostnames = []
             
-            # Extraire le hostname
-            hostname = "Unknown"
-            if "hostname:" in output.lower():
-                for line in output.split('\n'):
-                    if "hostname:" in line.lower():
-                        hostname = line.split(':')[1].strip()
-                        break
+            for config_file in saved_files:
+                if os.path.exists(config_file):
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        file_content = f.read()
+                        all_configurations.append(file_content)
+                        
+                        # Extraire le hostname du fichier
+                        for line in file_content.split('\n'):
+                            if line.startswith("# Hostname:"):
+                                hostname = line.split(":")[1].strip()
+                                if hostname != "Non detecte":
+                                    hostnames.append(hostname)
+                                break
+            
+            # Combiner toutes les configurations
+            combined_config = "\n\n".join(all_configurations) if all_configurations else ""
+            combined_hostname = ", ".join(hostnames) if hostnames else "Multiple switches"
+            
+            # Preparer le message de statut
+            success_count = len(saved_files)
+            error_count = len(config_errors)
+            
+            status_message = f"Configurations recuperees avec succes: {success_count}"
+            if error_count > 0:
+                status_message += f", echecs: {error_count}"
             
             return {
                 "success": True,
-                "configuration": configuration,
-                "hostname": hostname,
+                "configuration": combined_config,
+                "hostname": combined_hostname,
                 "logs": output,
-                "message": "Configuration rÃ©cupÃ©rÃ©e avec succÃ¨s"
+                "message": status_message,
+                "saved_files": saved_files,
+                "errors": config_errors
             }
         else:
             # Erreur
@@ -263,9 +282,9 @@ async def get_configuration(request: ConfigurationRequest):
             )
             
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=500, detail="Timeout lors de la rÃ©cupÃ©ration (2min)")
+        raise HTTPException(status_code=500, detail="Timeout lors de la recuperation (3min)")
     except Exception as e:
-        logger.error(f"Erreur rÃ©cupÃ©ration config: {e}")
+        logger.error(f"Erreur recuperation config: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 @app.get("/")
@@ -276,10 +295,10 @@ async def root():
         "version": server_status["version"],
         "status": server_status["status"],
         "endpoints": {
-            "/health": "VÃ©rification de santÃ©",
-            "/ping-device": "Ping d'un pÃ©riphÃ©rique",
+            "/health": "Verification de sante",
+            "/ping-device": "Ping d'un peripherique",
             "/test-connection": "Test de connexion SSH",
-            "/get-configuration": "RÃ©cupÃ©ration de configuration via Rebond"
+            "/get-configuration": "Recuperation de configuration via Rebond"
         }
     }
 

@@ -11,7 +11,8 @@ import { FileUpload } from '@/components/FileUpload';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Router, Network, Bug, ChevronDown, X, Trash2 } from 'lucide-react';
+import { Router, Network, Bug, ChevronDown, X, Trash2, Download } from 'lucide-react';
+import JSZip from 'jszip';
 
 interface ParsedResult {
   filename: string;
@@ -108,6 +109,62 @@ const Index = () => {
     saveJuniperMultiUpload({ files: [] });
   };
 
+  const sanitizeFilename = (name: string): string => {
+    return name.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+  };
+
+  const buildCompleteConfig = (result: ParsedResult): string => {
+    return `# Configuration complète pour ${result.switchInfo?.hostname || result.filename}
+# Généré automatiquement par Juniper Configuration Tool
+
+# ==========================================
+# 1. Configuration 802.1X
+# ==========================================
+${result.dot1xConfig}
+
+# ==========================================
+# 2. Configuration de Nettoyage
+# ==========================================
+${result.cleanupConfig}
+
+# ==========================================
+# 3. Configuration RADIUS
+# ==========================================
+${result.radiusConfig}
+
+# ==========================================
+# Instructions d'application :
+# ==========================================
+# 1. Se connecter au switch via SSH
+# 2. Entrer en mode configuration : configure
+# 3. Copier-coller les commandes ci-dessus
+# 4. Faire un commit de la configuration
+`;
+  };
+
+  const handleDownloadAll = async () => {
+    if (results.length === 0) return;
+    
+    const zip = new JSZip();
+    
+    results.forEach((result, index) => {
+      const baseFilename = result.switchInfo?.hostname || result.filename.replace(/\.txt$/i, '');
+      const sanitizedName = sanitizeFilename(baseFilename);
+      const content = buildCompleteConfig(result);
+      zip.file(`${sanitizedName}_prepa.txt`, content);
+    });
+    
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'configurations_prepa.zip';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Load saved data and check for transferred data
   useEffect(() => {
     // Priority 1: Data transferred from DeviceConnection via navigation state
@@ -175,20 +232,31 @@ const Index = () => {
           {/* Show results only if files are uploaded */}
           {results.length > 0 && (
             <>
-              {/* Results Header with Clear All Button */}
+              {/* Results Header with Actions */}
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">
                   Résultats de l'analyse ({results.length} fichier{results.length > 1 ? 's' : ''})
                 </h2>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={clearAllResults}
-                  className="flex items-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Tout effacer
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="default"
+                    size="sm"
+                    onClick={handleDownloadAll}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Tout télécharger
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={clearAllResults}
+                    className="flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Tout effacer
+                  </Button>
+                </div>
               </div>
 
               {/* Results Accordion */}

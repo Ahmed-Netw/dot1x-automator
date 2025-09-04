@@ -298,6 +298,7 @@ const Index = () => {
                               dot1xConfig={result.dot1xConfig}
                               cleanupConfig={result.cleanupConfig}
                               radiusConfig={result.radiusConfig}
+                              baseFilename={result.switchInfo?.hostname || result.filename.replace(/\.txt$/i, '')}
                             />
                           )}
                         </div>

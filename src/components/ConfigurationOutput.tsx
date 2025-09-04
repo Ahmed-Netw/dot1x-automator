@@ -8,10 +8,15 @@ interface ConfigurationOutputProps {
   dot1xConfig: string;
   cleanupConfig: string;
   radiusConfig: string;
+  baseFilename?: string;
 }
 
-export const ConfigurationOutput = ({ dot1xConfig, cleanupConfig, radiusConfig }: ConfigurationOutputProps) => {
+export const ConfigurationOutput = ({ dot1xConfig, cleanupConfig, radiusConfig, baseFilename }: ConfigurationOutputProps) => {
   const { toast } = useToast();
+
+  const sanitizeFilename = (name: string): string => {
+    return name.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+  };
 
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -54,7 +59,8 @@ ${cleanupConfig}
 # 4. Faire un commit de la configuration
 `;
     
-    downloadConfig(allConfig, 'juniper-complete-config.txt');
+    const base = sanitizeFilename(baseFilename || 'config');
+    downloadConfig(allConfig, `${base}_prepa.txt`);
   };
 
   const ConfigurationCard = ({ 

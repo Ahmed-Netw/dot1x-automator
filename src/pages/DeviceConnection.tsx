@@ -367,6 +367,65 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     }
   };
 
+  // Fonction pour exécuter les commandes après la connexion
+  const executeTestCommandsAfterConnection = async (commands: string[]) => {
+    setIsExecutingCommand(true);
+    setCommandOutput('');
+    
+    try {
+      if (bridgeServerAvailable) {
+        // Mode bridge server
+        const response = await fetch('http://127.0.0.1:5001/execute-commands', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            rebond_ip: rebondServerIp,
+            rebond_username: rebondUsername,
+            rebond_password: rebondPassword,
+            switch_ip: switchIp.split(',')[0].trim(),
+            switch_username: switchUsername,
+            switch_password: switchPassword,
+            commands: commands
+          }),
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setCommandOutput(result.output);
+          toast({
+            title: "Commandes exécutées",
+            description: `${commands.length} commande(s) exécutée(s) avec succès`
+          });
+        } else {
+          setCommandOutput(`Erreur: ${result.error || 'Échec de l\'exécution'}`);
+          toast({
+            title: "Erreur",
+            description: result.error || 'Échec de l\'exécution',
+            variant: "destructive"
+          });
+        }
+      } else if (tauriInvoke) {
+        // Mode desktop - exécution via Tauri (à implémenter si nécessaire)
+        toast({
+          title: "Mode Desktop",
+          description: "Exécution des commandes via desktop non encore implémentée"
+        });
+      }
+    } catch (error: any) {
+      setCommandOutput(`Erreur: ${error.message}`);
+      toast({
+        title: "Erreur",
+        description: error.message || 'Erreur lors de l\'exécution des commandes',
+        variant: "destructive"
+      });
+    } finally {
+      setIsExecutingCommand(false);
+    }
+  };
+
   const handleExecuteTestCommands = async () => {
     // Validation des commandes
     const commands = testCommands.split('\n').filter(cmd => cmd.trim());
@@ -746,6 +805,25 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       return;
     }
 
+    // Validation des commandes de test si elles sont présentes
+    const commands = testCommands.split('\n').filter(cmd => cmd.trim());
+    const forbiddenCommand = 'show configuration | display set | no-more';
+    
+    if (commands.length > 0) {
+      const hasForbiddenCommand = commands.some(cmd => 
+        cmd.trim().toLowerCase() === forbiddenCommand.toLowerCase()
+      );
+      
+      if (hasForbiddenCommand) {
+        toast({
+          title: "Commande interdite",
+          description: `La commande "${forbiddenCommand}" ne peut pas être exécutée`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     // Si plusieurs IPs sont détectées, utiliser automatiquement la récupération multiple
     const allIps = switchIp.split(',').map(ip => ip.trim()).filter(ip => ip);
     const hasCustomRows = customRows.some(row => row.ip.trim());
@@ -758,7 +836,6 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     // 1. Mode Desktop (Tauri) - connexion réelle via Tauri
     if (tauriInvoke) {
-      // ... keep existing code (desktop mode implementation)
       setIsConnecting(true);
       setConnectionStatus({
         isConnected: false
@@ -792,6 +869,11 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
             title: "Connexion réussie",
             description: `Configuration du switch ${result.hostname} récupérée`
           });
+          
+          // Exécuter automatiquement les commandes de test si présentes
+          if (commands.length > 0) {
+            await executeTestCommandsAfterConnection(commands);
+          }
         } else {
           setExecutionLogs(result.execution_logs || result.message || '');
           throw new Error(result.message || 'Connexion échouée');
@@ -837,6 +919,11 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
             title: "Connexion réussie",
             description: `Configuration récupérée via Bridge Server`
           });
+          
+          // Exécuter automatiquement les commandes de test si présentes
+          if (commands.length > 0) {
+            await executeTestCommandsAfterConnection(commands);
+          }
         } else {
           throw new Error(result.error || 'Récupération échouée');
         }
@@ -921,6 +1008,20 @@ vlans {
         title: "Mode simulation",
         description: "Configuration simulée générée avec succès"
       });
+      
+      // Exécuter automatiquement les commandes de test si présentes (simulation)
+      if (commands.length > 0) {
+        const mockOutput = commands.map((cmd, index) => 
+          `> ${cmd}\n\n[Mode simulation - résultat simulé]\nCommande ${index + 1} exécutée avec succès\n\n`
+        ).join('---\n\n');
+        
+        setCommandOutput(mockOutput);
+        toast({
+          title: "Commandes simulées",
+          description: `${commands.length} commande(s) simulée(s)`
+        });
+      }
+      
       return;
     }
 
@@ -1706,24 +1807,6 @@ set vlans default vlan-id 1`;
                   </p>
                 </div>
 
-                <Button
-                  onClick={handleExecuteTestCommands}
-                  disabled={!testCommands.trim() || !rebondUsername || !rebondPassword || !switchIp.trim() || isExecutingCommand}
-                  className="w-full"
-                >
-                  {isExecutingCommand ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Exécution en cours...
-                    </>
-                  ) : (
-                    <>
-                      <Terminal className="mr-2 h-4 w-4" />
-                      Exécuter les commandes
-                    </>
-                  )}
-                </Button>
-
                 {commandOutput && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -1763,7 +1846,7 @@ set vlans default vlan-id 1`;
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  Connexion SSH sécurisée via serveur Rebond → show configuration | display set | no-more
+                  Connexion SSH sécurisée via serveur Rebond → Exécution automatique des commandes saisies
                 </span>
               </div>
               {isConnecting && connectionStep && <div className="p-3 bg-muted/50 rounded-lg">

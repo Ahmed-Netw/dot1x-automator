@@ -49,6 +49,15 @@ class ConfigurationRequest(BaseModel):
     switch_username: str
     switch_password: str
 
+class ExecuteCommandsRequest(BaseModel):
+    rebond_ip: str
+    rebond_username: str
+    rebond_password: str
+    switch_ip: str
+    switch_username: str
+    switch_password: str
+    commands: list[str]
+
 # Etat global
 server_status = {
     "status": "ok",
@@ -287,6 +296,114 @@ async def get_configuration(request: ConfigurationRequest):
         logger.error(f"Erreur recuperation config: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
+@app.post("/execute-commands")
+async def execute_commands(request: ExecuteCommandsRequest):
+    """Execute des commandes SSH personnalisees via serveur Rebond"""
+    try:
+        logger.info(f"Execution de {len(request.commands)} commandes via Rebond {request.rebond_ip} -> {request.switch_ip}")
+        
+        # Validation: bloquer la commande interdite
+        forbidden_command = "show configuration | display set | no-more"
+        for cmd in request.commands:
+            if cmd.strip().lower() == forbidden_command.lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Commande interdite: {forbidden_command}"
+                )
+        
+        # Import conditionnel de paramiko
+        try:
+            import paramiko
+        except ImportError:
+            raise HTTPException(
+                status_code=500,
+                detail="Paramiko non installe. Executez: pip install paramiko"
+            )
+        
+        # Connexion au serveur Rebond
+        rebond_client = paramiko.SSHClient()
+        rebond_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        
+        try:
+            # Se connecter au Rebond
+            rebond_client.connect(
+                hostname=request.rebond_ip,
+                username=request.rebond_username,
+                password=request.rebond_password,
+                timeout=10,
+                allow_agent=False,
+                look_for_keys=False
+            )
+            
+            # Creer un canal de transport
+            transport = rebond_client.get_transport()
+            channel = transport.open_channel(
+                "direct-tcpip",
+                (request.switch_ip, 22),
+                ("127.0.0.1", 0)
+            )
+            
+            # Se connecter au switch via le canal
+            switch_client = paramiko.SSHClient()
+            switch_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            switch_client.connect(
+                hostname=request.switch_ip,
+                username=request.switch_username,
+                password=request.switch_password,
+                timeout=30,
+                sock=channel,
+                allow_agent=False,
+                look_for_keys=False
+            )
+            
+            # Executer chaque commande
+            output_lines = []
+            for cmd in request.commands:
+                output_lines.append(f"> {cmd}")
+                output_lines.append("")
+                
+                stdin, stdout, stderr = switch_client.exec_command(cmd, timeout=30)
+                cmd_output = stdout.read().decode('utf-8', errors='ignore')
+                cmd_error = stderr.read().decode('utf-8', errors='ignore')
+                
+                if cmd_output:
+                    output_lines.append(cmd_output)
+                if cmd_error:
+                    output_lines.append(f"[STDERR]: {cmd_error}")
+                
+                output_lines.append("")
+                output_lines.append("---")
+                output_lines.append("")
+            
+            combined_output = "\n".join(output_lines)
+            
+            switch_client.close()
+            rebond_client.close()
+            
+            return {
+                "success": True,
+                "output": combined_output,
+                "commands_executed": len(request.commands),
+                "message": f"{len(request.commands)} commandes executees avec succes"
+            }
+            
+        except paramiko.AuthenticationException:
+            raise HTTPException(status_code=401, detail="Authentification SSH echouee")
+        except paramiko.SSHException as e:
+            raise HTTPException(status_code=500, detail=f"Erreur SSH: {str(e)}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erreur execution: {str(e)}")
+        finally:
+            try:
+                rebond_client.close()
+            except:
+                pass
+                
+    except Exception as e:
+        logger.error(f"Erreur execution commandes: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
+
 @app.get("/")
 async def root():
     """Page d'accueil du serveur bridge"""
@@ -298,7 +415,8 @@ async def root():
             "/health": "Verification de sante",
             "/ping-device": "Ping d'un peripherique",
             "/test-connection": "Test de connexion SSH",
-            "/get-configuration": "Recuperation de configuration via Rebond"
+            "/get-configuration": "Recuperation de configuration via Rebond",
+            "/execute-commands": "Execution de commandes SSH personnalisees"
         }
     }
 

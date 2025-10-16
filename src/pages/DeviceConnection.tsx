@@ -374,8 +374,8 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
     
     try {
       if (bridgeServerAvailable) {
-        // Mode bridge server
-        const response = await fetch('http://127.0.0.1:5001/execute-commands', {
+        // Mode bridge server - essayer /execute-commands puis /execute-commands/ en fallback
+        let response = await fetch('http://127.0.0.1:5001/execute-commands', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -391,6 +391,25 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
           }),
         });
         
+        // Fallback avec slash final si 404
+        if (!response.ok && response.status === 404) {
+          response = await fetch('http://127.0.0.1:5001/execute-commands/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              rebond_ip: rebondServerIp,
+              rebond_username: rebondUsername,
+              rebond_password: rebondPassword,
+              switch_ip: switchIp.split(',')[0].trim(),
+              switch_username: switchUsername,
+              switch_password: switchPassword,
+              commands: commands
+            }),
+          });
+        }
+        
         if (!response.ok) {
           let errorDetail = "Échec de l'exécution";
           try {
@@ -398,7 +417,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
             if (err && err.detail) errorDetail = err.detail;
           } catch {}
           if (response.status === 404) {
-            errorDetail = "Endpoint /execute-commands introuvable sur le Bridge Server. Mettez à jour bridge_server.py puis redémarrez.";
+            errorDetail = "Endpoint /execute-commands introuvable. Vérifiez que bridge_server.py est à jour et redémarrez le serveur.";
           }
           setCommandOutput(`Erreur: ${errorDetail}`);
           toast({ title: 'Erreur', description: errorDetail, variant: 'destructive' });

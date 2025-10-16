@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 echo ========================================
 echo  Network Management Bridge Server
 echo ========================================

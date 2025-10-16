@@ -404,6 +404,11 @@ async def execute_commands(request: ExecuteCommandsRequest):
         logger.error(f"Erreur execution commandes: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
+@app.post("/execute-commands/")
+async def execute_commands_alias(request: ExecuteCommandsRequest):
+    # Alias avec slash final pour compatibilité
+    return await execute_commands(request)
+
 @app.get("/")
 async def root():
     """Page d'accueil du serveur bridge"""
@@ -428,19 +433,19 @@ if __name__ == "__main__":
     print("=" * 50)
     print("ðŸ“ Serveur: http://127.0.0.1:5001")
     print("ðŸ“š Documentation: http://127.0.0.1:5001/docs")
-    print("ðŸ”§ Endpoints disponibles:")
     print("   â€¢ GET  /health - VÃ©rification de santÃ©")
     print("   â€¢ POST /ping-device - Ping d'un pÃ©riphÃ©rique")
     print("   â€¢ POST /test-connection - Test connexion SSH")
     print("   â€¢ POST /get-configuration - RÃ©cupÃ©ration config")
+    print("   â€¢ POST /execute-commands - ExÃ©cution de commandes personnalisÃ©es")
     print("=" * 50)
     print("ðŸ’¡ Utilisez Ctrl+C pour arrÃªter le serveur")
     print("=" * 50)
     
+    # Lancement direct de l'application (Ã©vite les confusions d'import avec le reloader)
     uvicorn.run(
-        "bridge_server:app", 
-        host="127.0.0.1", 
-        port=5001, 
-        reload=True,
+        app,
+        host="127.0.0.1",
+        port=5001,
         log_level="info"
     )

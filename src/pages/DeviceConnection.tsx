@@ -391,6 +391,19 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
           }),
         });
         
+        if (!response.ok) {
+          let errorDetail = "Échec de l'exécution";
+          try {
+            const err = await response.json();
+            if (err && err.detail) errorDetail = err.detail;
+          } catch {}
+          if (response.status === 404) {
+            errorDetail = "Endpoint /execute-commands introuvable sur le Bridge Server. Mettez à jour bridge_server.py puis redémarrez.";
+          }
+          setCommandOutput(`Erreur: ${errorDetail}`);
+          toast({ title: 'Erreur', description: errorDetail, variant: 'destructive' });
+          return;
+        }
         const result = await response.json();
         
         if (result.success) {

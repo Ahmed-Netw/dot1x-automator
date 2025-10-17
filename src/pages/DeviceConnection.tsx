@@ -97,11 +97,6 @@ export default function DeviceConnection() {
   const [bridgeServerAvailable, setBridgeServerAvailable] = useState(false);
   const [checkingBridge, setCheckingBridge] = useState(false);
   
-  // État pour la zone de test de commandes
-  const [testCommands, setTestCommands] = useState<string>('');
-  const [commandOutput, setCommandOutput] = useState<string>('');
-  const [isExecutingCommand, setIsExecutingCommand] = useState(false);
-  
   // État pour la modale de confirmation de transfert
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingTransfer, setPendingTransfer] = useState<{
@@ -364,206 +359,6 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
         description: error.message || 'Erreur lors du test de connexion',
         variant: "destructive"
       });
-    }
-  };
-
-  // Fonction pour exécuter les commandes après la connexion
-  const executeTestCommandsAfterConnection = async (commands: string[]) => {
-    setIsExecutingCommand(true);
-    setCommandOutput('');
-    
-    try {
-      if (bridgeServerAvailable) {
-        // Mode bridge server - essayer /execute-commands puis /execute-commands/ en fallback
-        let response = await fetch('http://127.0.0.1:5001/execute-commands', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            rebond_ip: rebondServerIp,
-            rebond_username: rebondUsername,
-            rebond_password: rebondPassword,
-            switch_ip: switchIp.split(',')[0].trim(),
-            switch_username: switchUsername,
-            switch_password: switchPassword,
-            commands: commands
-          }),
-        });
-        
-        // Fallback avec slash final si 404
-        if (!response.ok && response.status === 404) {
-          response = await fetch('http://127.0.0.1:5001/execute-commands/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              rebond_ip: rebondServerIp,
-              rebond_username: rebondUsername,
-              rebond_password: rebondPassword,
-              switch_ip: switchIp.split(',')[0].trim(),
-              switch_username: switchUsername,
-              switch_password: switchPassword,
-              commands: commands
-            }),
-          });
-        }
-        
-        if (!response.ok) {
-          let errorDetail = "Échec de l'exécution";
-          try {
-            const err = await response.json();
-            if (err && err.detail) errorDetail = err.detail;
-          } catch {}
-          if (response.status === 404) {
-            errorDetail = "Endpoint /execute-commands introuvable. Vérifiez que bridge_server.py est à jour et redémarrez le serveur.";
-          }
-          setCommandOutput(`Erreur: ${errorDetail}`);
-          toast({ title: 'Erreur', description: errorDetail, variant: 'destructive' });
-          return;
-        }
-        const result = await response.json();
-        
-        if (result.success) {
-          setCommandOutput(result.output);
-          toast({
-            title: "Commandes exécutées",
-            description: `${commands.length} commande(s) exécutée(s) avec succès`
-          });
-        } else {
-          setCommandOutput(`Erreur: ${result.error || 'Échec de l\'exécution'}`);
-          toast({
-            title: "Erreur",
-            description: result.error || 'Échec de l\'exécution',
-            variant: "destructive"
-          });
-        }
-      } else if (tauriInvoke) {
-        // Mode desktop - exécution via Tauri (à implémenter si nécessaire)
-        toast({
-          title: "Mode Desktop",
-          description: "Exécution des commandes via desktop non encore implémentée"
-        });
-      }
-    } catch (error: any) {
-      setCommandOutput(`Erreur: ${error.message}`);
-      toast({
-        title: "Erreur",
-        description: error.message || 'Erreur lors de l\'exécution des commandes',
-        variant: "destructive"
-      });
-    } finally {
-      setIsExecutingCommand(false);
-    }
-  };
-
-  const handleExecuteTestCommands = async () => {
-    // Validation des commandes
-    const commands = testCommands.split('\n').filter(cmd => cmd.trim());
-    const forbiddenCommand = 'show configuration | display set | no-more';
-    
-    // Vérifier si une commande interdite est présente
-    const hasForbiddenCommand = commands.some(cmd => 
-      cmd.trim().toLowerCase() === forbiddenCommand.toLowerCase()
-    );
-    
-    if (hasForbiddenCommand) {
-      toast({
-        title: "Commande interdite",
-        description: `La commande "${forbiddenCommand}" ne peut pas être exécutée`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (commands.length === 0) {
-      toast({
-        title: "Aucune commande",
-        description: "Veuillez saisir au moins une commande",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Validation des identifiants
-    if (!rebondUsername || !rebondPassword) {
-      toast({
-        title: "Champs manquants",
-        description: "Veuillez saisir les identifiants du serveur Rebond",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (!switchIp.trim()) {
-      toast({
-        title: "IP manquante",
-        description: "Veuillez saisir l'adresse IP du switch",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsExecutingCommand(true);
-    setCommandOutput('');
-    
-    try {
-      if (bridgeServerAvailable) {
-        // Mode bridge server
-        const response = await fetch('http://127.0.0.1:5001/execute-commands', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            rebond_ip: rebondServerIp,
-            rebond_username: rebondUsername,
-            rebond_password: rebondPassword,
-            switch_ip: switchIp.split(',')[0].trim(), // Prendre la première IP
-            switch_username: switchUsername,
-            switch_password: switchPassword,
-            commands: commands
-          }),
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          setCommandOutput(result.output);
-          toast({
-            title: "Commandes exécutées",
-            description: `${commands.length} commande(s) exécutée(s) avec succès`
-          });
-        } else {
-          setCommandOutput(`Erreur: ${result.error || 'Échec de l\'exécution'}`);
-          toast({
-            title: "Erreur",
-            description: result.error || 'Échec de l\'exécution',
-            variant: "destructive"
-          });
-        }
-      } else {
-        // Mode simulation
-        const mockOutput = commands.map((cmd, index) => 
-          `> ${cmd}\n\n[Mode simulation - résultat simulé]\nCommande ${index + 1} exécutée avec succès\n\n`
-        ).join('---\n\n');
-        
-        setCommandOutput(mockOutput);
-        toast({
-          title: "Mode simulation",
-          description: "Résultat simulé - démarrez le bridge server pour exécuter les vraies commandes"
-        });
-      }
-    } catch (error: any) {
-      setCommandOutput(`Erreur: ${error.message}`);
-      toast({
-        title: "Erreur",
-        description: error.message || 'Erreur lors de l\'exécution des commandes',
-        variant: "destructive"
-      });
-    } finally {
-      setIsExecutingCommand(false);
     }
   };
 
@@ -837,25 +632,6 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
       return;
     }
 
-    // Validation des commandes de test si elles sont présentes
-    const commands = testCommands.split('\n').filter(cmd => cmd.trim());
-    const forbiddenCommand = 'show configuration | display set | no-more';
-    
-    if (commands.length > 0) {
-      const hasForbiddenCommand = commands.some(cmd => 
-        cmd.trim().toLowerCase() === forbiddenCommand.toLowerCase()
-      );
-      
-      if (hasForbiddenCommand) {
-        toast({
-          title: "Commande interdite",
-          description: `La commande "${forbiddenCommand}" ne peut pas être exécutée`,
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-
     // Si plusieurs IPs sont détectées, utiliser automatiquement la récupération multiple
     const allIps = switchIp.split(',').map(ip => ip.trim()).filter(ip => ip);
     const hasCustomRows = customRows.some(row => row.ip.trim());
@@ -868,6 +644,7 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
 
     // 1. Mode Desktop (Tauri) - connexion réelle via Tauri
     if (tauriInvoke) {
+      // ... keep existing code (desktop mode implementation)
       setIsConnecting(true);
       setConnectionStatus({
         isConnected: false
@@ -901,11 +678,6 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
             title: "Connexion réussie",
             description: `Configuration du switch ${result.hostname} récupérée`
           });
-          
-          // Exécuter automatiquement les commandes de test si présentes
-          if (commands.length > 0) {
-            await executeTestCommandsAfterConnection(commands);
-          }
         } else {
           setExecutionLogs(result.execution_logs || result.message || '');
           throw new Error(result.message || 'Connexion échouée');
@@ -951,11 +723,6 @@ set protocols dot1x authenticator authentication-profile-name dot1x-profile
             title: "Connexion réussie",
             description: `Configuration récupérée via Bridge Server`
           });
-          
-          // Exécuter automatiquement les commandes de test si présentes
-          if (commands.length > 0) {
-            await executeTestCommandsAfterConnection(commands);
-          }
         } else {
           throw new Error(result.error || 'Récupération échouée');
         }
@@ -1040,20 +807,6 @@ vlans {
         title: "Mode simulation",
         description: "Configuration simulée générée avec succès"
       });
-      
-      // Exécuter automatiquement les commandes de test si présentes (simulation)
-      if (commands.length > 0) {
-        const mockOutput = commands.map((cmd, index) => 
-          `> ${cmd}\n\n[Mode simulation - résultat simulé]\nCommande ${index + 1} exécutée avec succès\n\n`
-        ).join('---\n\n');
-        
-        setCommandOutput(mockOutput);
-        toast({
-          title: "Commandes simulées",
-          description: `${commands.length} commande(s) simulée(s)`
-        });
-      }
-      
       return;
     }
 
@@ -1817,58 +1570,12 @@ set vlans default vlan-id 1`;
                 )}
               </div>
 
-              {/* Zone de test de commandes */}
-              <div className="space-y-4 border-t pt-6">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <TestTube className="h-4 w-4 text-accent-foreground" />
-                  Zone de Test de Commandes
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="test-commands">Commandes à exécuter (une par ligne)</Label>
-                  <Textarea
-                    id="test-commands"
-                    placeholder="show version | no-more&#10;show interfaces terse&#10;show system uptime"
-                    value={testCommands}
-                    onChange={(e) => setTestCommands(e.target.value)}
-                    rows={4}
-                    className="font-mono text-xs"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    ⚠️ La commande "show configuration | display set | no-more" est interdite et sera automatiquement bloquée
-                  </p>
-                </div>
-
-                {commandOutput && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Résultat de l'exécution</Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(commandOutput);
-                          toast({
-                            title: "Copié !",
-                            description: "Résultat copié dans le presse-papiers"
-                          });
-                        }}
-                      >
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copier
-                      </Button>
-                    </div>
-                    <Textarea
-                      value={commandOutput}
-                      readOnly
-                      className="min-h-[300px] font-mono text-xs bg-muted/50"
-                    />
-                  </div>
-                )}
-              </div>
-
               {/* Boutons de test */}
               <div className="space-y-2">
+                <div className="flex gap-2">
+                  
+                </div>
+                
                 <p className="text-xs text-muted-foreground">
                   💡 <strong>Prérequis:</strong> sshpass doit être installé sur le serveur Rebond
                 </p>
@@ -1878,7 +1585,7 @@ set vlans default vlan-id 1`;
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  Connexion SSH sécurisée via serveur Rebond → Exécution automatique des commandes saisies
+                  Connexion SSH sécurisée via serveur Rebond → show configuration | display set | no-more
                 </span>
               </div>
               {isConnecting && connectionStep && <div className="p-3 bg-muted/50 rounded-lg">

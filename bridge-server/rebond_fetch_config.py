@@ -184,46 +184,31 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ips, switch_u
         all_configs = []
         
         for switch_ip in ip_list:
-            print(f"Execution de la commande via SSH vers le switch {switch_ip}...")
+            print(f"Tunnel SSH direct vers le switch {switch_ip}...")
             
-            # Options SSH robustes avec TTY allocation
-            ssh_options = [
-                "-tt",  # Force TTY allocation
-                "-o StrictHostKeyChecking=no",
-                "-o UserKnownHostsFile=/dev/null",
-                "-o ConnectTimeout=30",
-                "-o ServerAliveInterval=10",
-                "-o ServerAliveCountMax=3",
-                "-o Ciphers=aes128-cbc,3des-cbc,aes192-cbc,aes256-cbc,aes128-ctr,aes192-ctr,aes256-ctr",
-                "-o KexAlgorithms=diffie-hellman-group14-sha1,diffie-hellman-group1-sha1,diffie-hellman-group-exchange-sha1,diffie-hellman-group-exchange-sha256",
-                "-o HostKeyAlgorithms=ssh-rsa,ssh-dss",
-                "-o MACs=hmac-md5,hmac-sha1,hmac-sha2-256"
-            ]
-            ssh_opts = " ".join(ssh_options)
-        
-            # Commandes specialisees par type d'equipement avec validation stricte
+            # Commandes a essayer (sans sshpass - connexion directe via tunnel)
             command_sets = [
                 {
                     "name": "Juniper CLI (format set)",
                     "commands": [
-                        f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration | display set | no-more'",
-                        f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | display set | no-more\"'"
+                        "show configuration | display set | no-more",
+                        "cli -c \"show configuration | display set | no-more\""
                     ],
                     "validator": is_valid_juniper_config
                 },
                 {
                     "name": "Juniper CLI (format standard)",
                     "commands": [
-                        f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show configuration | no-more'",
-                        f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'cli -c \"show configuration | no-more\"'"
+                        "show configuration | no-more",
+                        "cli -c \"show configuration | no-more\""
                     ],
                     "validator": is_valid_juniper_config
                 },
                 {
                     "name": "Cisco/Aruba running-config",
                     "commands": [
-                        f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'terminal length 0; show running-config'",
-                        f"sshpass -p '{switch_pass}' ssh {ssh_opts} {switch_user}@{switch_ip} 'show running-config'"
+                        "terminal length 0\nshow running-config",
+                        "show running-config"
                     ],
                     "validator": is_valid_cisco_config
                 }
@@ -232,80 +217,100 @@ def connect_via_rebond(rebond_ip, rebond_user, rebond_pass, switch_ips, switch_u
             print("Recuperation de la configuration...")
             config_found = False
             
-            # Essayer chaque set de commandes
-            for cmd_set in command_sets:
-                print(f"Test {cmd_set['name']}...")
+            try:
+                # Ouvrir un tunnel SSH direct via le Rebond
+                transport = rebond_client.get_transport()
+                channel = transport.open_channel("direct-tcpip", (switch_ip, 22), ("127.0.0.1", 0))
                 
-                for i, command in enumerate(cmd_set["commands"]):
-                    print(f"   Tentative {i+1}/{len(cmd_set['commands'])}")
-                    try:
-                        # Executer la commande avec un timeout plus long
-                        stdin, stdout, stderr = rebond_client.exec_command(command, timeout=120)
-                        
-                        # Lire la sortie
-                        config_output = stdout.read().decode('utf-8', errors='ignore')
-                        error_output = stderr.read().decode('utf-8', errors='ignore')
-                        exit_status = stdout.channel.recv_exit_status()
-                        
-                        print(f"   Exit status: {exit_status}, Output size: {len(config_output)} chars")
-                        
-                        # Verifications de base
-                        if exit_status != 0:
-                            print(f"   ERROR: Commande echouee (exit {exit_status})")
-                            continue
-                        
-                        if len(config_output.strip()) < 50:
-                            print(f"   ERROR: Sortie trop courte ({len(config_output)} chars)")
-                            continue
-                        
-                        # Verifier les erreurs SSH critiques
-                        critical_errors = [
-                            "no matching cipher",
-                            "connection refused", 
-                            "permission denied",
-                            "host key verification failed",
-                            "could not resolve hostname"
-                        ]
-                        
-                        if any(error.lower() in error_output.lower() for error in critical_errors):
-                            print(f"   ERROR: Erreur SSH critique: {error_output}")
-                            continue
-                        
-                        # Valider le contenu avec le validateur specialise
-                        if cmd_set["validator"](config_output):
-                            print(f"   SUCCESS: Configuration valide detectee!")
-                            print(f"   Taille: {len(config_output)} caracteres")
-                            
-                            # Nettoyer la configuration (supprimer les prompts parasites)
-                            cleaned_config = clean_configuration_output(config_output)
-                            hostname = extract_hostname(cleaned_config) or switch_ip
-                            
-                            # Save individual config
-                            output_dir = os.path.dirname(os.path.abspath(__file__))
-                            saved_file = save_individual_configuration(cleaned_config, switch_ip, hostname, output_dir)
-                            print(f"CONFIG_SAVED: {saved_file}")
-                            
-                            all_configs.append({
-                                'ip': switch_ip,
-                                'hostname': hostname,
-                                'config': cleaned_config,
-                                'file': saved_file
-                            })
-                            config_found = True
-                            break
-                        else:
-                            print(f"   ERROR: Contenu non valide pour {cmd_set['name']}")
-                            # Afficher un echantillon pour debug
-                            sample = config_output[:200].replace('\n', '\\n')
-                            print(f"   Echantillon: {sample}...")
-                            
-                    except Exception as e:
-                        print(f"   ERROR: Erreur d'execution: {str(e)}")
-                        continue
+                # Se connecter au switch via le tunnel
+                switch_client = paramiko.SSHClient()
+                switch_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                switch_client.connect(
+                    hostname=switch_ip,
+                    username=switch_user,
+                    password=switch_pass,
+                    timeout=30,
+                    sock=channel,
+                    look_for_keys=False,
+                    allow_agent=False
+                )
                 
-                if config_found:
-                    break
-            
+                print(f"SUCCESS: Tunnel etabli vers {switch_ip}")
+                
+                # Essayer chaque set de commandes
+                for cmd_set in command_sets:
+                    print(f"Test {cmd_set['name']}...")
+                    
+                        try:
+                            # Executer la commande directement sur le switch
+                            stdin, stdout, stderr = switch_client.exec_command(command, timeout=120)
+                            
+                            # Lire la sortie
+                            config_output = stdout.read().decode('utf-8', errors='ignore')
+                            error_output = stderr.read().decode('utf-8', errors='ignore')
+                            exit_status = stdout.channel.recv_exit_status()
+                            
+                            print(f"   Exit status: {exit_status}, Output size: {len(config_output)} chars")
+                            
+                            # Verifications de base
+                            if exit_status != 0:
+                                print(f"   ERROR: Commande echouee (exit {exit_status})")
+                                if error_output:
+                                    print(f"   STDERR: {error_output[:200]}")
+                                continue
+                            
+                            if len(config_output.strip()) < 50:
+                                print(f"   ERROR: Sortie trop courte ({len(config_output)} chars)")
+                                continue
+                            
+                            # Valider le contenu avec le validateur specialise
+                            if cmd_set["validator"](config_output):
+                                print(f"   SUCCESS: Configuration valide detectee!")
+                                print(f"   Taille: {len(config_output)} caracteres")
+                                
+                                # Nettoyer la configuration (supprimer les prompts parasites)
+                                cleaned_config = clean_configuration_output(config_output)
+                                hostname = extract_hostname(cleaned_config) or switch_ip
+                                
+                                # Save individual config
+                                output_dir = os.path.dirname(os.path.abspath(__file__))
+                                saved_file = save_individual_configuration(cleaned_config, switch_ip, hostname, output_dir)
+                                print(f"CONFIG_SAVED: {saved_file}")
+                                
+                                all_configs.append({
+                                    'ip': switch_ip,
+                                    'hostname': hostname,
+                                    'config': cleaned_config,
+                                    'file': saved_file
+                                })
+                                config_found = True
+                                break
+                            else:
+                                print(f"   ERROR: Contenu non valide pour {cmd_set['name']}")
+                                # Afficher un echantillon pour debug
+                                sample = config_output[:200].replace('\n', '\\n')
+                                print(f"   Echantillon: {sample}...")
+                                
+                        except Exception as e:
+                            print(f"   ERROR: Erreur d'execution: {str(e)}")
+                            continue
+                    
+                    if config_found:
+                        break
+                
+                # Fermer la connexion au switch
+                switch_client.close()
+                
+            except paramiko.AuthenticationException as auth_err:
+                print(f"ERROR: Authentification echouee vers {switch_ip}: {auth_err}")
+                print(f"CONFIG_ERROR: {switch_ip} - Authentification echouee")
+            except paramiko.SSHException as ssh_err:
+                print(f"ERROR: Erreur SSH vers {switch_ip}: {ssh_err}")
+                print(f"CONFIG_ERROR: {switch_ip} - Erreur SSH")
+            except Exception as conn_err:
+                print(f"ERROR: Impossible de se connecter a {switch_ip}: {conn_err}")
+                print(f"CONFIG_ERROR: {switch_ip} - Connexion impossible")
+                
             if not config_found:
                 print(f"CONFIG_ERROR: {switch_ip} - Aucune configuration valide recuperee")
         
